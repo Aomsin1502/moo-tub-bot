@@ -1,0 +1,349 @@
+const PROMPTPAY = process.env.PROMPTPAY_NUMBER || '0931726399';
+
+function welcomeFlex() {
+  return {
+    type: 'flex',
+    altText: '🐷 ยินดีต้อนรับสู่ร้านหมูทุบแม่บัวเผื่อน!',
+    contents: {
+      type: 'bubble',
+      size: 'mega',
+      header: {
+        type: 'box',
+        layout: 'vertical',
+        backgroundColor: '#C0392B',
+        paddingAll: '20px',
+        contents: [
+          { type: 'text', text: '🐷 ร้านหมูทุบแม่บัวเผื่อน', weight: 'bold', size: 'xl', color: '#FFFFFF', align: 'center', wrap: true },
+          { type: 'text', text: 'แม่บัวเผื่อน • ชุมพร', size: 'sm', color: '#FFD0CC', align: 'center' },
+        ],
+      },
+      body: {
+        type: 'box',
+        layout: 'vertical',
+        spacing: 'md',
+        contents: [
+          { type: 'text', text: 'ยินดีต้อนรับครับ! 😊', weight: 'bold', size: 'lg', color: '#C0392B' },
+          { type: 'text', text: 'สินค้าทำสดใหม่ทุกวัน จัดส่งทั่วไทย\nผ่าน Kerry / Flash Express', wrap: true, size: 'sm', color: '#555555' },
+          { type: 'separator', margin: 'md' },
+          {
+            type: 'box', layout: 'vertical', spacing: 'sm', margin: 'md',
+            contents: [
+              { type: 'text', text: '🐷  หมูทุบ หมูแท่ง หมูสวรรค์ หมูฝอย หมูหยอง', size: 'sm', wrap: true },
+              { type: 'text', text: '🌶️  น้ำพริกหลากหลาย 50–100 บาท', size: 'sm', wrap: true },
+              { type: 'text', text: '🦐  กะปิแท้ชุมพร และสินค้าอื่นๆ', size: 'sm', wrap: true },
+            ],
+          },
+        ],
+      },
+      footer: {
+        type: 'box',
+        layout: 'vertical',
+        spacing: 'sm',
+        contents: [
+          {
+            type: 'button',
+            action: { type: 'message', label: '📜 ดูเมนูทั้งหมด', text: 'เมนู' },
+            style: 'primary',
+            color: '#C0392B',
+          },
+          {
+            type: 'button',
+            action: { type: 'message', label: '🛒 สั่งสินค้าเลย!', text: 'สั่ง' },
+            style: 'secondary',
+          },
+        ],
+      },
+    },
+  };
+}
+
+function cartFlex(cart, showConfirmButtons = false) {
+  let total = 0;
+  const itemRows = cart.map(item => {
+    const sub = item.price * item.qty;
+    total += sub;
+    return {
+      type: 'box',
+      layout: 'horizontal',
+      contents: [
+        { type: 'text', text: `${item.name}${item.qty > 1 ? ` ×${item.qty}` : ''}`, size: 'sm', flex: 4, wrap: true, color: '#333333' },
+        { type: 'text', text: `${sub} ฿`, size: 'sm', flex: 1, align: 'end', color: '#C0392B', weight: 'bold' },
+      ],
+    };
+  });
+
+  const footerContents = showConfirmButtons
+    ? [
+        {
+          type: 'button',
+          action: { type: 'message', label: '✅ ยืนยันสั่งซื้อ', text: 'ยืนยัน' },
+          style: 'primary',
+          color: '#27AE60',
+        },
+        {
+          type: 'button',
+          action: { type: 'message', label: '❌ ยกเลิก', text: 'ยกเลิก' },
+          style: 'secondary',
+        },
+      ]
+    : [];
+
+  return {
+    type: 'flex',
+    altText: `🛒 รายการสั่งซื้อ รวม ${total} บาท`,
+    contents: {
+      type: 'bubble',
+      header: {
+        type: 'box',
+        layout: 'vertical',
+        backgroundColor: '#2C3E50',
+        paddingAll: '16px',
+        contents: [
+          { type: 'text', text: '🛒 รายการสั่งซื้อของคุณ', weight: 'bold', color: '#FFFFFF', size: 'md' },
+        ],
+      },
+      body: {
+        type: 'box',
+        layout: 'vertical',
+        spacing: 'sm',
+        contents: [
+          ...itemRows,
+          { type: 'separator', margin: 'md' },
+          {
+            type: 'box',
+            layout: 'horizontal',
+            margin: 'md',
+            contents: [
+              { type: 'text', text: '💰 รวมทั้งหมด', weight: 'bold', flex: 3 },
+              { type: 'text', text: `${total} บาท`, weight: 'bold', color: '#C0392B', flex: 1, align: 'end', size: 'lg' },
+            ],
+          },
+          { type: 'text', text: '⚠️ ค่าส่ง Kerry/Flash คิดแยกต่างหาก', size: 'xs', color: '#888888', margin: 'sm' },
+        ],
+      },
+      ...(showConfirmButtons ? {
+        footer: {
+          type: 'box',
+          layout: 'vertical',
+          spacing: 'sm',
+          contents: footerContents,
+        },
+      } : {}),
+    },
+  };
+}
+
+function paymentFlex(orderId, total) {
+  return {
+    type: 'flex',
+    altText: `💳 ชำระเงิน ออเดอร์ #${orderId} ยอด ${total} บาท`,
+    contents: {
+      type: 'bubble',
+      header: {
+        type: 'box',
+        layout: 'vertical',
+        backgroundColor: '#1A5276',
+        paddingAll: '16px',
+        contents: [
+          { type: 'text', text: '💳 ข้อมูลการชำระเงิน', weight: 'bold', color: '#FFFFFF', size: 'md' },
+          { type: 'text', text: `ออเดอร์ #${orderId}`, color: '#AED6F1', size: 'sm' },
+        ],
+      },
+      body: {
+        type: 'box',
+        layout: 'vertical',
+        spacing: 'md',
+        contents: [
+          {
+            type: 'box',
+            layout: 'horizontal',
+            contents: [
+              { type: 'text', text: '💰 ยอดสินค้า', flex: 2, color: '#555555' },
+              { type: 'text', text: `${total} บาท`, flex: 1, align: 'end', weight: 'bold', color: '#C0392B', size: 'lg' },
+            ],
+          },
+          { type: 'text', text: '⚠️ ค่าส่ง Kerry/Flash แจ้งแยกต่างหาก', size: 'xs', color: '#E74C3C', wrap: true },
+          { type: 'separator', margin: 'md' },
+          { type: 'text', text: '📱 โอนผ่าน PromptPay', weight: 'bold', margin: 'md' },
+          {
+            type: 'box',
+            layout: 'vertical',
+            backgroundColor: '#EBF5FB',
+            paddingAll: '12px',
+            margin: 'sm',
+            contents: [
+              { type: 'text', text: PROMPTPAY, weight: 'bold', size: 'xxl', align: 'center', color: '#1A5276' },
+              { type: 'text', text: '🏦 SCB (แม่บัวเผื่อน)', size: 'sm', align: 'center', color: '#555555', margin: 'sm' },
+            ],
+          },
+          {
+            type: 'box',
+            layout: 'vertical',
+            backgroundColor: '#FDFEFE',
+            paddingAll: '12px',
+            margin: 'md',
+            contents: [
+              { type: 'text', text: '📸 ส่งสลิปหลังโอนเงินได้เลยครับ', weight: 'bold', color: '#1A5276', wrap: true, align: 'center' },
+              { type: 'text', text: 'กดแนบรูป → เลือกสลิปโอนเงิน', size: 'xs', color: '#888888', align: 'center', margin: 'sm', wrap: true },
+            ],
+          },
+        ],
+      },
+    },
+  };
+}
+
+function slipReceivedFlex(orderId) {
+  return {
+    type: 'flex',
+    altText: `✅ รับสลิปออเดอร์ #${orderId} แล้ว!`,
+    contents: {
+      type: 'bubble',
+      header: {
+        type: 'box',
+        layout: 'vertical',
+        backgroundColor: '#1E8449',
+        paddingAll: '16px',
+        contents: [
+          { type: 'text', text: '✅ รับสลิปแล้วครับ!', weight: 'bold', color: '#FFFFFF', size: 'lg' },
+          { type: 'text', text: `ออเดอร์ #${orderId}`, color: '#A9DFBF', size: 'sm' },
+        ],
+      },
+      body: {
+        type: 'box',
+        layout: 'vertical',
+        spacing: 'md',
+        contents: [
+          { type: 'text', text: '⏳ รอร้านยืนยัน', weight: 'bold', size: 'md' },
+          { type: 'text', text: 'ร้านจะยืนยันออเดอร์ภายใน 30 นาทีครับ\nขอบคุณที่ใช้บริการ 🙏', wrap: true, color: '#555555' },
+        ],
+      },
+    },
+  };
+}
+
+function orderConfirmedFlex(orderId) {
+  return {
+    type: 'flex',
+    altText: `✅ ร้านยืนยันออเดอร์ #${orderId} แล้ว!`,
+    contents: {
+      type: 'bubble',
+      header: {
+        type: 'box',
+        layout: 'vertical',
+        backgroundColor: '#1E8449',
+        paddingAll: '16px',
+        contents: [
+          { type: 'text', text: '✅ ยืนยันออเดอร์แล้ว!', weight: 'bold', color: '#FFFFFF', size: 'lg' },
+          { type: 'text', text: `#${orderId}`, color: '#A9DFBF', size: 'sm' },
+        ],
+      },
+      body: {
+        type: 'box',
+        layout: 'vertical',
+        spacing: 'md',
+        contents: [
+          { type: 'text', text: '🚀 กำลังเตรียมสินค้า', weight: 'bold', size: 'md' },
+          { type: 'text', text: 'ร้านได้รับออเดอร์และยืนยันแล้วครับ\nจะแจ้งเลขพัสดุเมื่อจัดส่ง 📮', wrap: true, color: '#555555' },
+        ],
+      },
+    },
+  };
+}
+
+function shippedFlex(orderId, trackingNo) {
+  return {
+    type: 'flex',
+    altText: `📦 จัดส่งออเดอร์ #${orderId} แล้ว!`,
+    contents: {
+      type: 'bubble',
+      header: {
+        type: 'box',
+        layout: 'vertical',
+        backgroundColor: '#7D3C98',
+        paddingAll: '16px',
+        contents: [
+          { type: 'text', text: '📦 จัดส่งแล้ว!', weight: 'bold', color: '#FFFFFF', size: 'lg' },
+          { type: 'text', text: `#${orderId}`, color: '#D7BDE2', size: 'sm' },
+        ],
+      },
+      body: {
+        type: 'box',
+        layout: 'vertical',
+        spacing: 'md',
+        contents: [
+          ...(trackingNo
+            ? [
+                { type: 'text', text: '🚚 เลขพัสดุ', color: '#555555', size: 'sm' },
+                {
+                  type: 'box',
+                  layout: 'vertical',
+                  backgroundColor: '#F4ECF7',
+                  paddingAll: '12px',
+                  contents: [
+                    { type: 'text', text: trackingNo, weight: 'bold', size: 'xl', align: 'center', color: '#7D3C98' },
+                  ],
+                },
+              ]
+            : []),
+          {
+            type: 'text',
+            text: 'ขอบคุณที่อุดหนุนร้านหมูทุบแม่บัวเผื่อนครับ\nแวะมาอีกนะครับ 🙏😊',
+            wrap: true,
+            color: '#555555',
+            margin: trackingNo ? 'md' : 'none',
+          },
+        ],
+      },
+    },
+  };
+}
+
+// Quick Reply helpers
+function qr(items) {
+  return {
+    items: items.map(({ label, text }) => ({
+      type: 'action',
+      action: { type: 'message', label, text: text || label },
+    })),
+  };
+}
+
+const QR_START = qr([
+  { label: '📜 ดูเมนู', text: 'เมนู' },
+  { label: '🛒 สั่งสินค้า', text: 'สั่ง' },
+]);
+
+const QR_ORDERING = qr([
+  { label: '📜 ดูเมนู', text: 'เมนู' },
+  { label: '🛒 ดูตะกร้า', text: 'ตะกร้า' },
+  { label: '✅ สั่งครบแล้ว', text: 'จบ' },
+  { label: '❌ ยกเลิก', text: 'ยกเลิก' },
+]);
+
+const QR_CONFIRM = qr([
+  { label: '✅ ยืนยัน', text: 'ยืนยัน' },
+  { label: '❌ ยกเลิก', text: 'ยกเลิก' },
+]);
+
+const QR_CANCEL = qr([
+  { label: '❌ ยกเลิก', text: 'ยกเลิก' },
+]);
+
+function adminQR(orderId) {
+  return qr([{ label: '✅ ยืนยันออเดอร์', text: `ยืนยัน ${orderId}` }]);
+}
+
+module.exports = {
+  welcomeFlex,
+  cartFlex,
+  paymentFlex,
+  slipReceivedFlex,
+  orderConfirmedFlex,
+  shippedFlex,
+  QR_START,
+  QR_ORDERING,
+  QR_CONFIRM,
+  QR_CANCEL,
+  adminQR,
+};

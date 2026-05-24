@@ -1,12 +1,17 @@
 const { MENU, FLAT_ITEMS } = require('./menu');
 const { appendOrder } = require('./sheetsService');
+const {
+  welcomeFlex, cartFlex, paymentFlex,
+  slipReceivedFlex, orderConfirmedFlex, shippedFlex,
+  QR_START, QR_ORDERING, QR_CONFIRM, QR_CANCEL, adminQR,
+} = require('./messages');
 
 const PROMPTPAY = process.env.PROMPTPAY_NUMBER || '0931726399';
 const ADMIN_USER_ID = process.env.ADMIN_USER_ID || '';
 
 // userId -> { state, cart, orderId, displayName, address }
 const userStates = {};
-// orderId -> { userId, displayName, total, items, address }
+// orderId -> { userId, displayName, total, address }
 const orderMap = {};
 
 function getState(userId) {
@@ -34,8 +39,7 @@ function getMenuText() {
   });
   t += '\n═══════════════════\n';
   t += '📮 จัดส่งทั่วไทย (ลูกค้าชำระค่าส่งเอง)\n';
-  t += '❌ ไม่มีเก็บปลายทาง\n\n';
-  t += '💬 พิมพ์ "สั่ง" เพื่อสั่งสินค้าครับ';
+  t += '❌ ไม่มีเก็บปลายทาง';
   return t;
 }
 
@@ -44,7 +48,6 @@ function findItem(text) {
   for (const item of FLAT_ITEMS) {
     if (norm.includes(item.name.toLowerCase())) return item;
   }
-  // partial match: all words must appear
   for (const item of FLAT_ITEMS) {
     const words = item.name.toLowerCase().split(' ');
     if (words.length >= 2 && words.every(w => norm.includes(w))) return item;
@@ -66,26 +69,21 @@ function parseOrderLine(line) {
   return null;
 }
 
-function getCartSummary(cart) {
-  let t = '🛒 รายการสั่งซื้อ\n═══════════════════\n';
-  let total = 0;
-  cart.forEach((item, i) => {
-    const sub = item.price * item.qty;
-    total += sub;
-    t += `${i + 1}. ${item.name}`;
-    if (item.qty > 1) t += ` x${item.qty}`;
-    t += ` = ${sub} บ.\n`;
-  });
-  t += `═══════════════════\n💰 รวม: ${total} บาท`;
-  return { text: t, total };
-}
-
-function getPaymentText(orderId, total) {
-  return `💳 ชำระเงิน ออเดอร์ #${orderId}\n═══════════════════\n💰 ยอดสินค้า: ${total} บาท\n⚠️  ค่าส่ง Kerry/Flash จะแจ้งแยกต่างหาก\n\nโอนผ่าน PromptPay:\n📱 ${PROMPTPAY}\n🏦 SCB (แม่บัวเผื่อน)\n\n📸 กรุณาส่งสลิปหลังโอนเงินครับ 🙏`;
+function reply(client, replyToken, messages) {
+  return client.replyMessage({ replyToken, messages: Array.isArray(messages) ? messages : [messages] });
 }
 
 async function handleMessage(event, client) {
+  // ข้อความต้อนรับเมื่อผู้ใช้ follow OA
+  if (event.type === 'follow') {
+    try {
+      await reply(client, event.replyToken, welcomeFlex());
+    } catch (err) { console.error('Welcome error:', err.message); }
+    return;
+  }
+
   if (event.type !== 'message') return;
+
   const userId = event.source.userId;
   const state = getState(userId);
 
@@ -98,7 +96,7 @@ async function handleMessage(event, client) {
   if (event.message.type === 'image') {
     if (state.state === 'waiting_slip') {
       const orderId = state.orderId;
-      const { text: cartText, total } = getCartSummary(state.cart);
+      const total = state.cart.reduce((sum, i) => sum + i.price * i.qty, 0);
       const timestamp = new Date().toLocaleString('th-TH', { timeZone: 'Asia/Bangkok' });
 
       try {
@@ -109,32 +107,32 @@ async function handleMessage(event, client) {
         });
       } catch (err) { console.error('Sheets error:', err.message); }
 
-      // แจ้ง admin
+      // แจ้ง admin พร้อม Quick Reply ยืนยัน
       if (ADMIN_USER_ID) {
+        const cartLines = state.cart.map(i => `• ${i.name}${i.qty > 1 ? ` x${i.qty}` : ''} = ${i.price * i.qty} บ.`).join('\n');
         try {
           await client.pushMessage({
             to: ADMIN_USER_ID,
             messages: [{
               type: 'text',
-              text: `🔔 ออเดอร์ใหม่!\n${cartText}\n\n📦 ที่อยู่: ${state.address}\n👤 ลูกค้า: ${state.displayName}\n🆔 ${orderId}\n\nพิมพ์ "ยืนยัน ${orderId}" เพื่อยืนยัน\nพิมพ์ "จัดส่ง ${orderId} [เลขพัสดุ]" เมื่อส่ง`,
+              text: `🔔 ออเดอร์ใหม่!\n══════════════\n${cartLines}\n══════════════\n💰 รวม: ${total} บาท\n📦 ที่อยู่: ${state.address}\n👤 ลูกค้า: ${state.displayName}\n🆔 ${orderId}\n\nพิมพ์ "จัดส่ง ${orderId} [เลขพัสดุ]" เมื่อส่ง`,
+              quickReply: adminQR(orderId),
             }],
           });
         } catch (err) { console.error('Push admin error:', err.message); }
       }
 
-      // เก็บ order ไว้สำหรับ admin push
       orderMap[orderId] = { userId, displayName: state.displayName, total, address: state.address };
 
-      await client.replyMessage({
-        replyToken: event.replyToken,
-        messages: [{ type: 'text', text: `✅ รับสลิปแล้วครับ!\nออเดอร์ #${orderId}\n⏳ รอร้านยืนยันภายใน 30 นาที 🙏` }],
-      });
+      await reply(client, event.replyToken, slipReceivedFlex(orderId));
       resetState(userId);
       return;
     }
-    await client.replyMessage({
-      replyToken: event.replyToken,
-      messages: [{ type: 'text', text: '🐷 สวัสดีครับ!\nพิมพ์ "สั่ง" เพื่อสั่งสินค้า หรือ "เมนู" เพื่อดูรายการครับ' }],
+
+    await reply(client, event.replyToken, {
+      type: 'text',
+      text: '🐷 สวัสดีครับ!\nกด "สั่งสินค้า" หรือ "ดูเมนู" ได้เลยครับ 😊',
+      quickReply: QR_START,
     });
     return;
   }
@@ -155,17 +153,17 @@ async function handleMessage(event, client) {
         try {
           await client.pushMessage({
             to: order.userId,
-            messages: [{ type: 'text', text: `✅ ร้านยืนยันออเดอร์ #${orderId} แล้วครับ!\n🚀 กำลังเตรียมสินค้า\n📮 จะแจ้งเลขพัสดุเมื่อจัดส่งครับ 🙏` }],
+            messages: [orderConfirmedFlex(orderId)],
           });
         } catch (err) { console.error('Push customer error:', err.message); }
-        await client.replyMessage({
-          replyToken: event.replyToken,
-          messages: [{ type: 'text', text: `✅ ยืนยัน #${orderId} แจ้งลูกค้า "${order.displayName}" แล้วครับ` }],
+        await reply(client, event.replyToken, {
+          type: 'text',
+          text: `✅ ยืนยัน #${orderId}\nแจ้งลูกค้า "${order.displayName}" แล้วครับ`,
         });
       } else {
-        await client.replyMessage({
-          replyToken: event.replyToken,
-          messages: [{ type: 'text', text: `❌ ไม่พบออเดอร์ #${orderId} (server อาจ restart ไปแล้ว)` }],
+        await reply(client, event.replyToken, {
+          type: 'text',
+          text: `❌ ไม่พบออเดอร์ #${orderId}\n(server อาจ restart ไปแล้ว)`,
         });
       }
       return;
@@ -179,74 +177,71 @@ async function handleMessage(event, client) {
         try {
           await client.pushMessage({
             to: order.userId,
-            messages: [{
-              type: 'text',
-              text: `📦 จัดส่งออเดอร์ #${orderId} แล้วครับ!${trackingNo ? `\n🚚 เลขพัสดุ: ${trackingNo}` : ''}\nขอบคุณมากครับ 🙏`,
-            }],
+            messages: [shippedFlex(orderId, trackingNo)],
           });
         } catch (err) { console.error('Push customer error:', err.message); }
-        await client.replyMessage({
-          replyToken: event.replyToken,
-          messages: [{ type: 'text', text: `📦 แจ้งจัดส่ง #${orderId} ลูกค้า "${order.displayName}" แล้วครับ` }],
+        await reply(client, event.replyToken, {
+          type: 'text',
+          text: `📦 แจ้งจัดส่ง #${orderId}\nลูกค้า "${order.displayName}" แล้วครับ`,
         });
       } else {
-        await client.replyMessage({
-          replyToken: event.replyToken,
-          messages: [{ type: 'text', text: `❌ ไม่พบออเดอร์ #${orderId}` }],
+        await reply(client, event.replyToken, {
+          type: 'text',
+          text: `❌ ไม่พบออเดอร์ #${orderId}`,
         });
       }
       return;
     }
   }
 
-  // รับรหัส LINE userId
+  // รหัส LINE userId
   if (lower === 'รหัสของฉัน' || lower === 'myid') {
-    await client.replyMessage({
-      replyToken: event.replyToken,
-      messages: [{ type: 'text', text: `🆔 LINE User ID ของคุณ:\n${userId}` }],
+    await reply(client, event.replyToken, {
+      type: 'text',
+      text: `🆔 LINE User ID ของคุณ:\n${userId}`,
     });
     return;
   }
 
-  // คำสั่งทั่วไป
+  // ดูเมนู
   if (['เมนู', 'menu', 'สินค้า', 'ดูเมนู'].includes(lower)) {
-    await client.replyMessage({
-      replyToken: event.replyToken,
-      messages: [{ type: 'text', text: getMenuText() }],
+    await reply(client, event.replyToken, {
+      type: 'text',
+      text: getMenuText(),
+      quickReply: QR_START,
     });
     return;
   }
 
+  // ยกเลิก (ใช้ได้ทุก state)
   if (['ยกเลิก', 'cancel', 'ยกเลิกออเดอร์'].includes(lower)) {
     resetState(userId);
-    await client.replyMessage({
-      replyToken: event.replyToken,
-      messages: [{ type: 'text', text: '❌ ยกเลิกออเดอร์แล้วครับ\nพิมพ์ "สั่ง" เพื่อเริ่มใหม่ หรือ "เมนู" เพื่อดูเมนูครับ 😊' }],
+    await reply(client, event.replyToken, {
+      type: 'text',
+      text: '❌ ยกเลิกออเดอร์แล้วครับ\nสั่งใหม่ได้เลยนะครับ 😊',
+      quickReply: QR_START,
     });
     return;
   }
 
-  // State machine
+  // ─── State machine ───────────────────────────────────────
+
   if (state.state === 'idle') {
     if (['สั่ง', 'order', 'ออเดอร์', 'สั่งซื้อ'].includes(lower)) {
       state.state = 'ordering';
       state.cart = [];
-      await client.replyMessage({
-        replyToken: event.replyToken,
-        messages: [{
-          type: 'text',
-          text: '🛒 เริ่มสั่งสินค้าได้เลยครับ!\n\nพิมพ์ชื่อสินค้าที่ต้องการ เช่น:\n  หมูทุบ 500g\n  หมูสวรรค์ 350g x2\n  น้ำพริกหมูทุบ x3\n\n📋 พิมพ์ "จบ" เมื่อสั่งครบ\n🛒 พิมพ์ "ตะกร้า" เพื่อดูรายการ\n📜 พิมพ์ "เมนู" เพื่อดูรายการสินค้า\n❌ พิมพ์ "ยกเลิก" เพื่อยกเลิก',
-        }],
+      await reply(client, event.replyToken, {
+        type: 'text',
+        text: '🛒 เริ่มสั่งสินค้าได้เลยครับ!\n\nพิมพ์ชื่อสินค้า เช่น:\n  หมูทุบ 500g\n  หมูสวรรค์ 350g x2\n  น้ำพริกหมูทุบ x3\n\nสั่งได้หลายรายการ กด "สั่งครบแล้ว" เมื่อเสร็จ',
+        quickReply: QR_ORDERING,
       });
       return;
     }
 
-    await client.replyMessage({
-      replyToken: event.replyToken,
-      messages: [{
-        type: 'text',
-        text: '🐷 สวัสดีครับ ร้านหมูทุบแม่บัวเผื่อน!\n\n📜 พิมพ์ "เมนู" เพื่อดูรายการสินค้า\n🛒 พิมพ์ "สั่ง" เพื่อสั่งสินค้าครับ 😊',
-      }],
+    await reply(client, event.replyToken, {
+      type: 'text',
+      text: '🐷 สวัสดีครับ ร้านหมูทุบแม่บัวเผื่อน!\nกด "ดูเมนู" หรือ "สั่งสินค้า" ได้เลยครับ 😊',
+      quickReply: QR_START,
     });
     return;
   }
@@ -254,34 +249,30 @@ async function handleMessage(event, client) {
   if (state.state === 'ordering') {
     if (['ตะกร้า', 'cart', 'ดูตะกร้า'].includes(lower)) {
       if (state.cart.length === 0) {
-        await client.replyMessage({
-          replyToken: event.replyToken,
-          messages: [{ type: 'text', text: '🛒 ยังไม่มีสินค้าในตะกร้าครับ' }],
+        await reply(client, event.replyToken, {
+          type: 'text',
+          text: '🛒 ยังไม่มีสินค้าในตะกร้าครับ\nพิมพ์ชื่อสินค้าที่ต้องการได้เลย',
+          quickReply: QR_ORDERING,
         });
       } else {
-        const { text: cartText } = getCartSummary(state.cart);
-        await client.replyMessage({
-          replyToken: event.replyToken,
-          messages: [{ type: 'text', text: `${cartText}\n\nพิมพ์ "จบ" เพื่อดำเนินการต่อ` }],
-        });
+        await reply(client, event.replyToken, [
+          { ...cartFlex(state.cart, false), quickReply: QR_ORDERING },
+        ]);
       }
       return;
     }
 
     if (['จบ', 'เสร็จ', 'สั่งครบ', 'done'].includes(lower)) {
       if (state.cart.length === 0) {
-        await client.replyMessage({
-          replyToken: event.replyToken,
-          messages: [{ type: 'text', text: '⚠️ ยังไม่มีสินค้าในตะกร้าครับ กรุณาเพิ่มสินค้าก่อนนะครับ' }],
+        await reply(client, event.replyToken, {
+          type: 'text',
+          text: '⚠️ ยังไม่มีสินค้าในตะกร้าครับ\nกรุณาเพิ่มสินค้าก่อนนะครับ',
+          quickReply: QR_ORDERING,
         });
         return;
       }
       state.state = 'confirming';
-      const { text: cartText } = getCartSummary(state.cart);
-      await client.replyMessage({
-        replyToken: event.replyToken,
-        messages: [{ type: 'text', text: `${cartText}\n\nพิมพ์ "ยืนยัน" เพื่อดำเนินการต่อ\nหรือ "ยกเลิก" เพื่อยกเลิก` }],
-      });
+      await reply(client, event.replyToken, cartFlex(state.cart, true));
       return;
     }
 
@@ -299,14 +290,15 @@ async function handleMessage(event, client) {
       }
     }
 
-    let reply = '';
-    if (added.length > 0) reply += added.join('\n') + '\n\n';
-    if (notFound.length > 0) reply += `⚠️ ไม่พบสินค้า: ${notFound.join(', ')}\nลองพิมพ์ใหม่หรือดูเมนูด้วย "เมนู"\n\n`;
-    reply += `🛒 ตะกร้า ${state.cart.length} รายการ\nพิมพ์ "จบ" เมื่อสั่งครบ หรือ "ตะกร้า" เพื่อดูรายการ`;
+    let replyText = '';
+    if (added.length > 0) replyText += added.join('\n') + '\n\n';
+    if (notFound.length > 0) replyText += `⚠️ ไม่พบสินค้า: ${notFound.join(', ')}\nลองพิมพ์ใหม่หรือกด "ดูเมนู"\n\n`;
+    replyText += `🛒 ตะกร้า ${state.cart.length} รายการ\nกด "สั่งครบแล้ว" เมื่อสั่งครบ`;
 
-    await client.replyMessage({
-      replyToken: event.replyToken,
-      messages: [{ type: 'text', text: reply }],
+    await reply(client, event.replyToken, {
+      type: 'text',
+      text: replyText,
+      quickReply: QR_ORDERING,
     });
     return;
   }
@@ -314,18 +306,17 @@ async function handleMessage(event, client) {
   if (state.state === 'confirming') {
     if (['ยืนยัน', 'confirm', 'ok', 'โอเค', 'ตกลง'].includes(lower)) {
       state.state = 'waiting_address';
-      await client.replyMessage({
-        replyToken: event.replyToken,
-        messages: [{
-          type: 'text',
-          text: '📦 กรุณาส่งที่อยู่จัดส่งครับ\n\nตัวอย่าง:\nชื่อ-สกุล: แม่มะลิ ใจดี\nที่อยู่: 123 ม.4 ต.บ้านใหม่ อ.เมือง จ.ชุมพร 86000\nโทร: 0812345678',
-        }],
+      await reply(client, event.replyToken, {
+        type: 'text',
+        text: '📦 กรุณาพิมพ์ที่อยู่จัดส่งครับ\n\nตัวอย่าง:\nชื่อ-สกุล: แม่มะลิ ใจดี\nที่อยู่: 123 ม.4 ต.บ้านใหม่ อ.เมือง จ.ชุมพร 86000\nโทร: 0812345678',
+        quickReply: QR_CANCEL,
       });
       return;
     }
-    await client.replyMessage({
-      replyToken: event.replyToken,
-      messages: [{ type: 'text', text: 'พิมพ์ "ยืนยัน" เพื่อดำเนินการต่อ หรือ "ยกเลิก" เพื่อยกเลิกครับ' }],
+    await reply(client, event.replyToken, {
+      type: 'text',
+      text: 'กด "ยืนยัน" เพื่อดำเนินการต่อ หรือ "ยกเลิก" เพื่อยกเลิกครับ',
+      quickReply: QR_CONFIRM,
     });
     return;
   }
@@ -334,21 +325,19 @@ async function handleMessage(event, client) {
     state.address = text;
     state.orderId = generateOrderId();
     state.state = 'waiting_slip';
-    const { text: cartText, total } = getCartSummary(state.cart);
-    await client.replyMessage({
-      replyToken: event.replyToken,
-      messages: [
-        { type: 'text', text: cartText },
-        { type: 'text', text: getPaymentText(state.orderId, total) },
-      ],
-    });
+    const total = state.cart.reduce((sum, i) => sum + i.price * i.qty, 0);
+    await reply(client, event.replyToken, [
+      cartFlex(state.cart, false),
+      paymentFlex(state.orderId, total),
+    ]);
     return;
   }
 
   if (state.state === 'waiting_slip') {
-    await client.replyMessage({
-      replyToken: event.replyToken,
-      messages: [{ type: 'text', text: '⏳ รอสลิปการโอนเงินอยู่นะครับ\n📸 กรุณาส่งรูปสลิปหลังโอนเงินครับ 🙏\n\nหรือพิมพ์ "ยกเลิก" เพื่อยกเลิก' }],
+    await reply(client, event.replyToken, {
+      type: 'text',
+      text: '⏳ รอสลิปการโอนเงินอยู่นะครับ\n📸 กรุณาส่งรูปสลิปหลังโอนเงิน 🙏',
+      quickReply: QR_CANCEL,
     });
     return;
   }
