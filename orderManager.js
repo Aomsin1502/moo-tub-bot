@@ -238,6 +238,46 @@ async function handleMessage(event, client) {
     return;
   }
 
+  // ─── ติดต่อร้าน ──────────────────────────────────────────────
+  if (['ติดต่อร้าน', 'ติดต่อ', 'โทร'].includes(lower)) {
+    await send(client, event.replyToken, {
+      type: 'flex',
+      altText: '📞 ติดต่อร้านหมูทุบแม่บัวเผื่อน',
+      contents: {
+        type: 'bubble',
+        header: {
+          type: 'box', layout: 'vertical', backgroundColor: '#C0392B', paddingAll: '16px',
+          contents: [{ type: 'text', text: '📞 ติดต่อร้าน', weight: 'bold', color: '#FFFFFF', size: 'lg' }],
+        },
+        body: {
+          type: 'box', layout: 'vertical', spacing: 'md',
+          contents: [
+            { type: 'text', text: '🐷 ร้านหมูทุบแม่บัวเผื่อน', weight: 'bold', size: 'md' },
+            { type: 'text', text: '📍 ชุมพร', size: 'sm', color: '#555555' },
+            { type: 'separator', margin: 'md' },
+            {
+              type: 'box', layout: 'horizontal', margin: 'md',
+              contents: [
+                { type: 'text', text: '📱 โทร', flex: 1, color: '#555555', size: 'sm' },
+                { type: 'text', text: `${PROMPTPAY}`, flex: 2, weight: 'bold', color: '#C0392B' },
+              ],
+            },
+            { type: 'text', text: 'สั่งซื้อผ่าน LINE นี้ได้เลยครับ\nทีมงานพร้อมให้บริการครับ 😊', wrap: true, size: 'sm', color: '#555555', margin: 'md' },
+          ],
+        },
+        footer: {
+          type: 'box', layout: 'vertical',
+          contents: [{
+            type: 'button',
+            action: { type: 'uri', label: '📞 โทรหาร้าน', uri: `tel:${PROMPTPAY}` },
+            style: 'primary', color: '#C0392B',
+          }],
+        },
+      },
+    });
+    return;
+  }
+
   // ─── เช็กสถานะออเดอร์ ────────────────────────────────────────
   if (['สถานะ', 'เช็กสถานะ', 'ออเดอร์ของฉัน', 'เช็คสถานะ'].includes(lower)) {
     const lastOrderId = userLastOrder[userId];
