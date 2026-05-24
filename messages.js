@@ -299,6 +299,115 @@ function shippedFlex(orderId, trackingNo) {
   };
 }
 
+const STATUS_CONFIG = {
+  'รอยืนยัน':         { color: '#E67E22', icon: '⏳', label: 'รอร้านยืนยัน',   canCancel: true,  hasFee: false },
+  'กำลัง Packing':    { color: '#2980B9', icon: '📦', label: 'กำลัง Packing',  canCancel: true,  hasFee: true  },
+  'รออนุมัติยกเลิก':  { color: '#7F8C8D', icon: '🔄', label: 'รอร้านอนุมัติ',  canCancel: false, hasFee: false },
+  'จัดส่งแล้ว':       { color: '#7D3C98', icon: '🚚', label: 'จัดส่งแล้ว',     canCancel: false, hasFee: false },
+  'ยกเลิก':           { color: '#95A5A6', icon: '❌', label: 'ยกเลิกแล้ว',     canCancel: false, hasFee: false },
+};
+
+function statusFlex(orderId, orderData) {
+  const { status, total, items, trackingNo } = orderData;
+  const cfg = STATUS_CONFIG[status] || { color: '#95A5A6', icon: '❓', label: status, canCancel: false };
+
+  const itemRows = Array.isArray(items) ? items.map(i => ({
+    type: 'box', layout: 'horizontal',
+    contents: [
+      { type: 'text', text: `• ${i.name}${i.qty > 1 ? ` ×${i.qty}` : ''}`, size: 'sm', flex: 4, wrap: true, color: '#555555' },
+      { type: 'text', text: `${i.price * i.qty} ฿`, size: 'sm', flex: 1, align: 'end', color: '#333333' },
+    ],
+  })) : [];
+
+  return {
+    type: 'flex',
+    altText: `📦 สถานะออเดอร์ #${orderId}: ${cfg.label}`,
+    contents: {
+      type: 'bubble',
+      header: {
+        type: 'box', layout: 'vertical', backgroundColor: cfg.color, paddingAll: '16px',
+        contents: [
+          { type: 'text', text: `${cfg.icon}  ${cfg.label}`, weight: 'bold', color: '#FFFFFF', size: 'lg' },
+          { type: 'text', text: `#${orderId}`, color: '#FFFFFF', size: 'xs', margin: 'sm' },
+        ],
+      },
+      body: {
+        type: 'box', layout: 'vertical', spacing: 'sm',
+        contents: [
+          ...itemRows,
+          { type: 'separator', margin: 'md' },
+          {
+            type: 'box', layout: 'horizontal', margin: 'md',
+            contents: [
+              { type: 'text', text: '💰 รวม', flex: 2, color: '#555555', weight: 'bold' },
+              { type: 'text', text: `${total} บาท`, flex: 1, align: 'end', weight: 'bold', color: '#C0392B' },
+            ],
+          },
+          ...(trackingNo ? [{
+            type: 'box', layout: 'horizontal', margin: 'sm',
+            contents: [
+              { type: 'text', text: '🚚 เลขพัสดุ', flex: 2, color: '#555555', size: 'sm' },
+              { type: 'text', text: trackingNo, flex: 2, align: 'end', weight: 'bold', color: '#7D3C98', wrap: true, size: 'sm' },
+            ],
+          }] : []),
+        ],
+      },
+      ...(cfg.canCancel ? {
+        footer: {
+          type: 'box', layout: 'vertical',
+          contents: [{
+            type: 'button',
+            action: { type: 'message', label: '❌ ยกเลิกออเดอร์', text: 'ยกเลิกออเดอร์' },
+            style: 'secondary',
+            color: '#E74C3C',
+          }],
+        },
+      } : {}),
+    },
+  };
+}
+
+function cancelConfirmFlex(orderId, hasFee) {
+  return {
+    type: 'flex',
+    altText: `⚠️ ยืนยันการยกเลิกออเดอร์ #${orderId}?`,
+    contents: {
+      type: 'bubble',
+      header: {
+        type: 'box', layout: 'vertical', backgroundColor: '#E74C3C', paddingAll: '16px',
+        contents: [
+          { type: 'text', text: '⚠️ ยืนยันการยกเลิก?', weight: 'bold', color: '#FFFFFF', size: 'lg' },
+          { type: 'text', text: `#${orderId}`, color: '#FFCCCC', size: 'xs', margin: 'sm' },
+        ],
+      },
+      body: {
+        type: 'box', layout: 'vertical',
+        contents: [
+          hasFee
+            ? { type: 'text', text: '📦 ออเดอร์กำลัง Packing อยู่แล้วครับ\n\nหากยกเลิก ต้องชำระค่า Packing\nร้านจะติดต่อแจ้งยอดที่ต้องชำระครับ', wrap: true, color: '#C0392B', size: 'sm' }
+            : { type: 'text', text: 'ยืนยันการยกเลิกออเดอร์ใช่ไหมครับ?\n\nร้านจะดำเนินการคืนเงินให้ครับ 🙏', wrap: true, color: '#555555', size: 'sm' },
+        ],
+      },
+      footer: {
+        type: 'box', layout: 'vertical', spacing: 'sm',
+        contents: [
+          {
+            type: 'button',
+            action: { type: 'message', label: hasFee ? '✅ ยืนยัน (มีค่า Packing)' : '✅ ยืนยันยกเลิก', text: 'ยืนยันยกเลิก' },
+            style: 'primary',
+            color: '#E74C3C',
+          },
+          {
+            type: 'button',
+            action: { type: 'message', label: '↩️ ไม่ยกเลิก', text: 'ไม่ยกเลิก' },
+            style: 'secondary',
+          },
+        ],
+      },
+    },
+  };
+}
+
 // Quick Reply helpers
 function qr(items) {
   return {
@@ -341,6 +450,8 @@ module.exports = {
   slipReceivedFlex,
   orderConfirmedFlex,
   shippedFlex,
+  statusFlex,
+  cancelConfirmFlex,
   QR_START,
   QR_ORDERING,
   QR_CONFIRM,

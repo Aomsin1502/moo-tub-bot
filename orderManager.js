@@ -3,26 +3,32 @@ const { appendOrder } = require('./sheetsService');
 const {
   welcomeFlex, cartFlex, paymentFlex,
   slipReceivedFlex, orderConfirmedFlex, shippedFlex,
+  statusFlex, cancelConfirmFlex,
   QR_START, QR_ORDERING, QR_CONFIRM, QR_CANCEL, adminQR,
 } = require('./messages');
 
 const PROMPTPAY = process.env.PROMPTPAY_NUMBER || '0931726399';
 const ADMIN_USER_ID = process.env.ADMIN_USER_ID || '';
 
-// userId -> { state, cart, orderId, displayName, address }
+// userId → { state, cart, orderId, displayName, address, cancelPending }
 const userStates = {};
-// orderId -> { userId, displayName, total, address }
-const orderMap = {};
+
+// orderId → { userId, displayName, status, total, items, address, trackingNo }
+// status: รอยืนยัน | กำลัง Packing | รออนุมัติยกเลิก | จัดส่งแล้ว | ยกเลิก
+const orderStatus = {};
+
+// userId → orderId (most recent placed order)
+const userLastOrder = {};
 
 function getState(userId) {
   if (!userStates[userId]) {
-    userStates[userId] = { state: 'idle', cart: [], orderId: null, displayName: '', address: '' };
+    userStates[userId] = { state: 'idle', cart: [], orderId: null, displayName: '', address: '', cancelPending: null };
   }
   return userStates[userId];
 }
 
 function resetState(userId) {
-  userStates[userId] = { state: 'idle', cart: [], orderId: null, displayName: '', address: '' };
+  userStates[userId] = { state: 'idle', cart: [], orderId: null, displayName: '', address: '', cancelPending: null };
 }
 
 function generateOrderId() {
@@ -69,16 +75,14 @@ function parseOrderLine(line) {
   return null;
 }
 
-function reply(client, replyToken, messages) {
+function send(client, replyToken, messages) {
   return client.replyMessage({ replyToken, messages: Array.isArray(messages) ? messages : [messages] });
 }
 
 async function handleMessage(event, client) {
-  // ข้อความต้อนรับเมื่อผู้ใช้ follow OA
+  // ข้อความต้อนรับเมื่อ Follow OA
   if (event.type === 'follow') {
-    try {
-      await reply(client, event.replyToken, welcomeFlex());
-    } catch (err) { console.error('Welcome error:', err.message); }
+    try { await send(client, event.replyToken, welcomeFlex()); } catch (e) {}
     return;
   }
 
@@ -92,7 +96,7 @@ async function handleMessage(event, client) {
     state.displayName = profile.displayName;
   } catch (_) {}
 
-  // รับสลิป (รูปภาพ)
+  // ─── รับสลิป (รูปภาพ) ───────────────────────────────────────
   if (event.message.type === 'image') {
     if (state.state === 'waiting_slip') {
       const orderId = state.orderId;
@@ -106,6 +110,16 @@ async function handleMessage(event, client) {
           total, address: state.address, status: 'รอยืนยัน', timestamp,
         });
       } catch (err) { console.error('Sheets error:', err.message); }
+
+      // บันทึกสถานะออเดอร์
+      orderStatus[orderId] = {
+        userId, displayName: state.displayName,
+        status: 'รอยืนยัน', total,
+        items: [...state.cart],
+        address: state.address,
+        trackingNo: '',
+      };
+      userLastOrder[userId] = orderId;
 
       // แจ้ง admin พร้อม Quick Reply ยืนยัน
       if (ADMIN_USER_ID) {
@@ -122,16 +136,14 @@ async function handleMessage(event, client) {
         } catch (err) { console.error('Push admin error:', err.message); }
       }
 
-      orderMap[orderId] = { userId, displayName: state.displayName, total, address: state.address };
-
-      await reply(client, event.replyToken, slipReceivedFlex(orderId));
+      await send(client, event.replyToken, slipReceivedFlex(orderId));
       resetState(userId);
       return;
     }
 
-    await reply(client, event.replyToken, {
+    await send(client, event.replyToken, {
       type: 'text',
-      text: '🐷 สวัสดีครับ!\nกด "สั่งสินค้า" หรือ "ดูเมนู" ได้เลยครับ 😊',
+      text: '🐷 สวัสดีครับ! กด "สั่งสินค้า" หรือ "ดูเมนู" ได้เลยครับ 😊',
       quickReply: QR_START,
     });
     return;
@@ -141,30 +153,28 @@ async function handleMessage(event, client) {
   const text = event.message.text.trim();
   const lower = text.toLowerCase();
 
-  // Admin commands
+  // ─── Admin commands ────────────────────────────────────────
   if (ADMIN_USER_ID && userId === ADMIN_USER_ID) {
     const confirmMatch = text.match(/^ยืนยัน\s+(ORD\S+)/i);
     const shippedMatch = text.match(/^จัดส่ง\s+(ORD\S+)(?:\s+(.+))?/i);
+    const approvecancelMatch = text.match(/^อนุมัติยกเลิก\s+(ORD\S+)/i);
 
     if (confirmMatch) {
       const orderId = confirmMatch[1].toUpperCase();
-      const order = orderMap[orderId];
-      if (order) {
+      const order = orderStatus[orderId];
+      if (order && order.status === 'รอยืนยัน') {
+        order.status = 'กำลัง Packing';
         try {
-          await client.pushMessage({
-            to: order.userId,
-            messages: [orderConfirmedFlex(orderId)],
-          });
+          await client.pushMessage({ to: order.userId, messages: [orderConfirmedFlex(orderId)] });
         } catch (err) { console.error('Push customer error:', err.message); }
-        await reply(client, event.replyToken, {
+        await send(client, event.replyToken, {
           type: 'text',
-          text: `✅ ยืนยัน #${orderId}\nแจ้งลูกค้า "${order.displayName}" แล้วครับ`,
+          text: `✅ ยืนยัน #${orderId}\nสถานะ → กำลัง Packing\nแจ้งลูกค้า "${order.displayName}" แล้วครับ`,
         });
+      } else if (order) {
+        await send(client, event.replyToken, { type: 'text', text: `⚠️ #${orderId} สถานะปัจจุบัน: ${order.status}` });
       } else {
-        await reply(client, event.replyToken, {
-          type: 'text',
-          text: `❌ ไม่พบออเดอร์ #${orderId}\n(server อาจ restart ไปแล้ว)`,
-        });
+        await send(client, event.replyToken, { type: 'text', text: `❌ ไม่พบออเดอร์ #${orderId}` });
       }
       return;
     }
@@ -172,65 +182,191 @@ async function handleMessage(event, client) {
     if (shippedMatch) {
       const orderId = shippedMatch[1].toUpperCase();
       const trackingNo = shippedMatch[2] || '';
-      const order = orderMap[orderId];
+      const order = orderStatus[orderId];
       if (order) {
+        order.status = 'จัดส่งแล้ว';
+        order.trackingNo = trackingNo;
         try {
-          await client.pushMessage({
-            to: order.userId,
-            messages: [shippedFlex(orderId, trackingNo)],
-          });
+          await client.pushMessage({ to: order.userId, messages: [shippedFlex(orderId, trackingNo)] });
         } catch (err) { console.error('Push customer error:', err.message); }
-        await reply(client, event.replyToken, {
+        await send(client, event.replyToken, {
           type: 'text',
           text: `📦 แจ้งจัดส่ง #${orderId}\nลูกค้า "${order.displayName}" แล้วครับ`,
         });
       } else {
-        await reply(client, event.replyToken, {
+        await send(client, event.replyToken, { type: 'text', text: `❌ ไม่พบออเดอร์ #${orderId}` });
+      }
+      return;
+    }
+
+    if (approvecancelMatch) {
+      const orderId = approvecancelMatch[1].toUpperCase();
+      const order = orderStatus[orderId];
+      if (order && order.status === 'รออนุมัติยกเลิก') {
+        order.status = 'ยกเลิก';
+        try {
+          await client.pushMessage({
+            to: order.userId,
+            messages: [{
+              type: 'text',
+              text: `❌ ร้านอนุมัติยกเลิกออเดอร์ #${orderId} แล้วครับ\n📦 กรุณาชำระค่า Packing ตามที่ตกลง\nร้านจะดำเนินการให้ครับ 🙏`,
+            }],
+          });
+        } catch (err) { console.error('Push customer error:', err.message); }
+        await send(client, event.replyToken, {
           type: 'text',
-          text: `❌ ไม่พบออเดอร์ #${orderId}`,
+          text: `✅ อนุมัติยกเลิก #${orderId}\nแจ้งลูกค้า "${order.displayName}" แล้วครับ`,
         });
+      } else if (order) {
+        await send(client, event.replyToken, { type: 'text', text: `⚠️ #${orderId} สถานะปัจจุบัน: ${order.status}` });
+      } else {
+        await send(client, event.replyToken, { type: 'text', text: `❌ ไม่พบออเดอร์ #${orderId}` });
       }
       return;
     }
   }
 
-  // รหัส LINE userId
+  // ─── รหัส LINE userId ────────────────────────────────────────
   if (lower === 'รหัสของฉัน' || lower === 'myid') {
-    await reply(client, event.replyToken, {
-      type: 'text',
-      text: `🆔 LINE User ID ของคุณ:\n${userId}`,
-    });
+    await send(client, event.replyToken, { type: 'text', text: `🆔 LINE User ID ของคุณ:\n${userId}` });
     return;
   }
 
-  // ดูเมนู
+  // ─── ดูเมนู ──────────────────────────────────────────────────
   if (['เมนู', 'menu', 'สินค้า', 'ดูเมนู'].includes(lower)) {
-    await reply(client, event.replyToken, {
+    await send(client, event.replyToken, { type: 'text', text: getMenuText(), quickReply: QR_START });
+    return;
+  }
+
+  // ─── เช็กสถานะออเดอร์ ────────────────────────────────────────
+  if (['สถานะ', 'เช็กสถานะ', 'ออเดอร์ของฉัน', 'เช็คสถานะ'].includes(lower)) {
+    const lastOrderId = userLastOrder[userId];
+    if (!lastOrderId || !orderStatus[lastOrderId]) {
+      await send(client, event.replyToken, {
+        type: 'text',
+        text: '📦 ไม่พบออเดอร์ของคุณครับ\n(ข้อมูลจะหายถ้า server รีสตาร์ท)\nหากมีปัญหา กรุณาติดต่อร้านโดยตรงครับ',
+        quickReply: QR_START,
+      });
+    } else {
+      await send(client, event.replyToken, statusFlex(lastOrderId, orderStatus[lastOrderId]));
+    }
+    return;
+  }
+
+  // ─── ยืนยันยกเลิก ────────────────────────────────────────────
+  if (lower === 'ยืนยันยกเลิก') {
+    const cp = state.cancelPending;
+    if (!cp) {
+      await send(client, event.replyToken, { type: 'text', text: 'ไม่มีออเดอร์ที่รอยกเลิกอยู่ครับ', quickReply: QR_START });
+      return;
+    }
+    const { orderId, hasFee } = cp;
+    const order = orderStatus[orderId];
+    state.cancelPending = null;
+
+    if (!hasFee) {
+      // ยกเลิกก่อน Packing — ยกเลิกได้เลย
+      if (order) order.status = 'ยกเลิก';
+      if (ADMIN_USER_ID) {
+        try {
+          await client.pushMessage({
+            to: ADMIN_USER_ID,
+            messages: [{ type: 'text', text: `🚨 ลูกค้า "${state.displayName}" ยกเลิกออเดอร์ #${orderId}\n💰 รวม: ${order ? order.total : '-'} บาท\n⚠️ กรุณาคืนเงินลูกค้าครับ` }],
+          });
+        } catch (err) {}
+      }
+      await send(client, event.replyToken, {
+        type: 'text',
+        text: `✅ ยกเลิกออเดอร์ #${orderId} แล้วครับ\nร้านจะดำเนินการคืนเงินให้ครับ 🙏`,
+        quickReply: QR_START,
+      });
+    } else {
+      // ยกเลิกระหว่าง Packing — ต้องรอ admin อนุมัติ
+      if (order) order.status = 'รออนุมัติยกเลิก';
+      if (ADMIN_USER_ID) {
+        try {
+          await client.pushMessage({
+            to: ADMIN_USER_ID,
+            messages: [{ type: 'text', text: `🚨 ลูกค้า "${state.displayName}" ขอยกเลิกออเดอร์ #${orderId}\n📦 ขณะกำลัง Packing — มีค่า Packing\n\nพิมพ์ "อนุมัติยกเลิก ${orderId}" เพื่ออนุมัติ` }],
+          });
+        } catch (err) {}
+      }
+      await send(client, event.replyToken, {
+        type: 'text',
+        text: `📨 ส่งคำขอยกเลิกออเดอร์ #${orderId} แล้วครับ\nรอร้านดำเนินการ — จะแจ้งยอดค่า Packing ให้ทราบครับ 🙏`,
+        quickReply: QR_START,
+      });
+    }
+    return;
+  }
+
+  // ─── ไม่ยกเลิก ───────────────────────────────────────────────
+  if (lower === 'ไม่ยกเลิก') {
+    state.cancelPending = null;
+    await send(client, event.replyToken, {
       type: 'text',
-      text: getMenuText(),
+      text: '👍 รับทราบครับ ออเดอร์ยังดำเนินอยู่ตามปกติครับ 😊',
       quickReply: QR_START,
     });
     return;
   }
 
-  // ยกเลิก (ใช้ได้ทุก state)
-  if (['ยกเลิก', 'cancel', 'ยกเลิกออเดอร์'].includes(lower)) {
-    resetState(userId);
-    await reply(client, event.replyToken, {
-      type: 'text',
-      text: '❌ ยกเลิกออเดอร์แล้วครับ\nสั่งใหม่ได้เลยนะครับ 😊',
-      quickReply: QR_START,
-    });
+  // ─── ยกเลิกออเดอร์ (post-order) ─────────────────────────────
+  if (lower === 'ยกเลิกออเดอร์') {
+    const lastOrderId = userLastOrder[userId];
+    const order = lastOrderId ? orderStatus[lastOrderId] : null;
+
+    if (!order || ['จัดส่งแล้ว', 'ยกเลิก'].includes(order.status)) {
+      const msg = !order
+        ? '📦 ไม่พบออเดอร์ที่สามารถยกเลิกได้ครับ'
+        : order.status === 'จัดส่งแล้ว'
+          ? '🚚 ออเดอร์จัดส่งไปแล้ว ไม่สามารถยกเลิกได้ครับ'
+          : '❌ ออเดอร์ถูกยกเลิกไปแล้วครับ';
+      await send(client, event.replyToken, { type: 'text', text: msg, quickReply: QR_START });
+      return;
+    }
+
+    if (order.status === 'รออนุมัติยกเลิก') {
+      await send(client, event.replyToken, {
+        type: 'text',
+        text: '🔄 คำขอยกเลิกของคุณกำลังรอร้านอนุมัติอยู่ครับ 🙏',
+        quickReply: QR_START,
+      });
+      return;
+    }
+
+    const hasFee = order.status === 'กำลัง Packing';
+    state.cancelPending = { orderId: lastOrderId, hasFee };
+    await send(client, event.replyToken, cancelConfirmFlex(lastOrderId, hasFee));
     return;
   }
 
-  // ─── State machine ───────────────────────────────────────
+  // ─── ยกเลิก (ยกเลิก flow การสั่ง) ───────────────────────────
+  if (['ยกเลิก', 'cancel', 'ยกเลิกการสั่ง'].includes(lower)) {
+    if (state.state !== 'idle') {
+      resetState(userId);
+      await send(client, event.replyToken, {
+        type: 'text',
+        text: '❌ ยกเลิกออเดอร์แล้วครับ\nสั่งใหม่ได้เลยนะครับ 😊',
+        quickReply: QR_START,
+      });
+    } else {
+      await send(client, event.replyToken, {
+        type: 'text',
+        text: '🛒 ไม่มีออเดอร์ที่กำลังสั่งอยู่ครับ\nกด "สั่งสินค้า" เพื่อเริ่มได้เลยครับ 😊',
+        quickReply: QR_START,
+      });
+    }
+    return;
+  }
+
+  // ─── State machine ────────────────────────────────────────────
 
   if (state.state === 'idle') {
     if (['สั่ง', 'order', 'ออเดอร์', 'สั่งซื้อ'].includes(lower)) {
       state.state = 'ordering';
       state.cart = [];
-      await reply(client, event.replyToken, {
+      await send(client, event.replyToken, {
         type: 'text',
         text: '🛒 เริ่มสั่งสินค้าได้เลยครับ!\n\nพิมพ์ชื่อสินค้า เช่น:\n  หมูทุบ 500g\n  หมูสวรรค์ 350g x2\n  น้ำพริกหมูทุบ x3\n\nสั่งได้หลายรายการ กด "สั่งครบแล้ว" เมื่อเสร็จ',
         quickReply: QR_ORDERING,
@@ -238,7 +374,7 @@ async function handleMessage(event, client) {
       return;
     }
 
-    await reply(client, event.replyToken, {
+    await send(client, event.replyToken, {
       type: 'text',
       text: '🐷 สวัสดีครับ ร้านหมูทุบแม่บัวเผื่อน!\nกด "ดูเมนู" หรือ "สั่งสินค้า" ได้เลยครับ 😊',
       quickReply: QR_START,
@@ -249,34 +385,31 @@ async function handleMessage(event, client) {
   if (state.state === 'ordering') {
     if (['ตะกร้า', 'cart', 'ดูตะกร้า'].includes(lower)) {
       if (state.cart.length === 0) {
-        await reply(client, event.replyToken, {
+        await send(client, event.replyToken, {
           type: 'text',
           text: '🛒 ยังไม่มีสินค้าในตะกร้าครับ\nพิมพ์ชื่อสินค้าที่ต้องการได้เลย',
           quickReply: QR_ORDERING,
         });
       } else {
-        await reply(client, event.replyToken, [
-          { ...cartFlex(state.cart, false), quickReply: QR_ORDERING },
-        ]);
+        await send(client, event.replyToken, { ...cartFlex(state.cart, false), quickReply: QR_ORDERING });
       }
       return;
     }
 
     if (['จบ', 'เสร็จ', 'สั่งครบ', 'done'].includes(lower)) {
       if (state.cart.length === 0) {
-        await reply(client, event.replyToken, {
+        await send(client, event.replyToken, {
           type: 'text',
-          text: '⚠️ ยังไม่มีสินค้าในตะกร้าครับ\nกรุณาเพิ่มสินค้าก่อนนะครับ',
+          text: '⚠️ ยังไม่มีสินค้าในตะกร้าครับ กรุณาเพิ่มสินค้าก่อนนะครับ',
           quickReply: QR_ORDERING,
         });
         return;
       }
       state.state = 'confirming';
-      await reply(client, event.replyToken, cartFlex(state.cart, true));
+      await send(client, event.replyToken, cartFlex(state.cart, true));
       return;
     }
 
-    // parse สินค้า
     const lines = text.split('\n').filter(l => l.trim());
     const added = [];
     const notFound = [];
@@ -295,25 +428,21 @@ async function handleMessage(event, client) {
     if (notFound.length > 0) replyText += `⚠️ ไม่พบสินค้า: ${notFound.join(', ')}\nลองพิมพ์ใหม่หรือกด "ดูเมนู"\n\n`;
     replyText += `🛒 ตะกร้า ${state.cart.length} รายการ\nกด "สั่งครบแล้ว" เมื่อสั่งครบ`;
 
-    await reply(client, event.replyToken, {
-      type: 'text',
-      text: replyText,
-      quickReply: QR_ORDERING,
-    });
+    await send(client, event.replyToken, { type: 'text', text: replyText, quickReply: QR_ORDERING });
     return;
   }
 
   if (state.state === 'confirming') {
     if (['ยืนยัน', 'confirm', 'ok', 'โอเค', 'ตกลง'].includes(lower)) {
       state.state = 'waiting_address';
-      await reply(client, event.replyToken, {
+      await send(client, event.replyToken, {
         type: 'text',
         text: '📦 กรุณาพิมพ์ที่อยู่จัดส่งครับ\n\nตัวอย่าง:\nชื่อ-สกุล: แม่มะลิ ใจดี\nที่อยู่: 123 ม.4 ต.บ้านใหม่ อ.เมือง จ.ชุมพร 86000\nโทร: 0812345678',
         quickReply: QR_CANCEL,
       });
       return;
     }
-    await reply(client, event.replyToken, {
+    await send(client, event.replyToken, {
       type: 'text',
       text: 'กด "ยืนยัน" เพื่อดำเนินการต่อ หรือ "ยกเลิก" เพื่อยกเลิกครับ',
       quickReply: QR_CONFIRM,
@@ -326,7 +455,7 @@ async function handleMessage(event, client) {
     state.orderId = generateOrderId();
     state.state = 'waiting_slip';
     const total = state.cart.reduce((sum, i) => sum + i.price * i.qty, 0);
-    await reply(client, event.replyToken, [
+    await send(client, event.replyToken, [
       cartFlex(state.cart, false),
       paymentFlex(state.orderId, total),
     ]);
@@ -334,7 +463,7 @@ async function handleMessage(event, client) {
   }
 
   if (state.state === 'waiting_slip') {
-    await reply(client, event.replyToken, {
+    await send(client, event.replyToken, {
       type: 'text',
       text: '⏳ รอสลิปการโอนเงินอยู่นะครับ\n📸 กรุณาส่งรูปสลิปหลังโอนเงิน 🙏',
       quickReply: QR_CANCEL,
