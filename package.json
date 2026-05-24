@@ -1,0 +1,16 @@
+{
+  "name": "moo-tub-bot",
+  "version": "1.0.0",
+  "description": "LINE OA Bot ร้านหมูทุบแม่บัวเผื่อน",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js"
+  },
+  "dependencies": {
+    "@line/bot-sdk": "^9.4.0",
+    "axios": "^1.7.0",
+    "dotenv": "^16.4.0",
+    "express": "^4.19.0",
+    "googleapis": "^144.0.0"
+  }
+}
