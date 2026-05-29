@@ -253,7 +253,7 @@ async function handleMessage(event, client) {
         catalogFlex(),
         {
           type: 'text',
-          text: '🐷 แตะ สั่งเลย ที่รูปสินค้าได้เลยครับ!\nหรือกด "เมนูทั้งหมด" เพื่อดูรายการแบบข้อความ',
+          text: '🐷 กดเลือกจำนวนที่ต้องการจากรูปสินค้าได้เลยครับ!\nหรือกด "เมนูทั้งหมด" เพื่อดูรายการแบบข้อความ',
           quickReply: QR_MENU,
         },
       ]);
@@ -412,6 +412,31 @@ async function handleMessage(event, client) {
     return;
   }
 
+  // ─── สั่ง N ชิ้น (จาก catalog buttons) ──────────────────────────
+  const orderQtyMatch = text.match(/^สั่ง\s+(\d+)\s+(.+)$/);
+  if (orderQtyMatch && (state.state === 'idle' || state.state === 'ordering')) {
+    const qty = Math.min(parseInt(orderQtyMatch[1]), 20);
+    const itemName = orderQtyMatch[2].trim();
+    const item = findItem(itemName);
+    if (item && qty >= 1) {
+      if (state.state === 'idle') {
+        state.state = 'ordering';
+        state.cart = [];
+      }
+      for (let i = 0; i < qty; i++) {
+        addToCart(state, item);
+      }
+      const cartItem = state.cart.find(i => i.name === item.name);
+      const total = state.cart.reduce((s, i) => s + i.price * i.qty, 0);
+      await send(client, event.replyToken, {
+        type: 'text',
+        text: `✅ ${item.name} ×${cartItem.qty}  (${cartItem.subtotal} บาท)\n🛒 รวม ${total} บาท\n\nกด ➕ สั่งเพิ่ม หรือ ✅ สั่งครบแล้ว`,
+        quickReply: QR_ORDERING,
+      });
+      return;
+    }
+  }
+
   // ─── State machine ────────────────────────────────────────────
 
   if (state.state === 'idle') {
@@ -421,7 +446,7 @@ async function handleMessage(event, client) {
       try {
         await send(client, event.replyToken, [
           catalogFlex(),
-          { type: 'text', text: '🛒 แตะ สั่งเลย ที่สินค้าที่ต้องการครับ!', quickReply: QR_ORDERING },
+          { type: 'text', text: '🛒 กด 1 / 2 / 3 ชิ้น ที่สินค้าที่ต้องการครับ!', quickReply: QR_ORDERING },
         ]);
       } catch (err) {
         console.error('catalogFlex error:', err.message);

@@ -387,7 +387,7 @@ function qtyPickerFlex(item, qty) {
 function catalogFlex() {
   return {
     type: 'flex',
-    altText: 'สินค้าร้านหมูทุบแม่บัวเผื่อน - แตะ สั่งเลย ได้เลยครับ',
+    altText: 'สินค้าร้านหมูทุบแม่บัวเผื่อน - กดเลือกจำนวนได้เลยครับ',
     contents: {
       type: 'carousel',
       contents: CATALOG_ITEMS.map(item => ({
@@ -398,7 +398,7 @@ function catalogFlex() {
           size: 'full',
           aspectRatio: '1:1',
           aspectMode: 'cover',
-          action: { type: 'message', label: 'สั่งเลย', text: item.name },
+          action: { type: 'message', label: '1 ชิ้น', text: `สั่ง 1 ${item.name}` },
         },
         body: {
           type: 'box',
@@ -415,11 +415,14 @@ function catalogFlex() {
           layout: 'vertical',
           paddingAll: 'sm',
           contents: [{
-            type: 'button',
-            action: { type: 'message', label: 'สั่งเลย', text: item.name },
-            style: 'primary',
-            color: '#C0392B',
-            height: 'sm',
+            type: 'box',
+            layout: 'horizontal',
+            spacing: 'sm',
+            contents: [
+              { type: 'button', action: { type: 'message', label: '1 ชิ้น', text: `สั่ง 1 ${item.name}` }, flex: 1, style: 'secondary', height: 'sm' },
+              { type: 'button', action: { type: 'message', label: '2 ชิ้น', text: `สั่ง 2 ${item.name}` }, flex: 1, style: 'secondary', height: 'sm' },
+              { type: 'button', action: { type: 'message', label: '3 ชิ้น', text: `สั่ง 3 ${item.name}` }, flex: 1, style: 'primary', color: '#C0392B', height: 'sm' },
+            ],
           }],
         },
       })),
