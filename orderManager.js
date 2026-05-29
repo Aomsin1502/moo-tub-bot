@@ -4,7 +4,7 @@ const {
   welcomeFlex, cartFlex, paymentFlex,
   slipReceivedFlex, orderConfirmedFlex, shippedFlex,
   statusFlex, cancelConfirmFlex, catalogFlex,
-  QR_START, QR_ORDERING, QR_CONFIRM, QR_CANCEL, QR_MENU, adminQR,
+  QR_START, QR_ORDERING, QR_CONFIRM, QR_CANCEL, QR_MENU, QR_QTY, adminQR,
 } = require('./messages');
 
 const PROMPTPAY = process.env.PROMPTPAY_NUMBER || '0931726399';
@@ -22,13 +22,13 @@ const userLastOrder = {};
 
 function getState(userId) {
   if (!userStates[userId]) {
-    userStates[userId] = { state: 'idle', cart: [], orderId: null, displayName: '', address: '', cancelPending: null };
+    userStates[userId] = { state: 'idle', cart: [], orderId: null, displayName: '', address: '', cancelPending: null, pendingItem: null, prevState: null };
   }
   return userStates[userId];
 }
 
 function resetState(userId) {
-  userStates[userId] = { state: 'idle', cart: [], orderId: null, displayName: '', address: '', cancelPending: null };
+  userStates[userId] = { state: 'idle', cart: [], orderId: null, displayName: '', address: '', cancelPending: null, pendingItem: null, prevState: null };
 }
 
 function generateOrderId() {
@@ -412,15 +412,16 @@ async function handleMessage(event, client) {
       return;
     }
 
-    // ─── สั่งจากแคตตาล็อก (tap 🛒 สั่งเลย ขณะ idle) ──────────
+    // ─── สั่งจากแคตตาล็อก (tap สั่งเลย ขณะ idle) → ถามจำนวน ─────
     const catalogItem = findItem(text);
     if (catalogItem) {
-      state.state = 'ordering';
-      state.cart = [{ ...catalogItem, qty: 1, subtotal: catalogItem.price }];
+      state.pendingItem = catalogItem;
+      state.prevState = 'idle';
+      state.state = 'waiting_qty';
       await send(client, event.replyToken, {
         type: 'text',
-        text: `✅ เพิ่ม "${catalogItem.name}" ลงตะกร้าแล้วครับ!\n💰 ${catalogItem.price} บาท\n\nสั่งเพิ่มได้ หรือกด "สั่งครบแล้ว" เพื่อดำเนินการต่อ`,
-        quickReply: QR_ORDERING,
+        text: `🛒 "${catalogItem.name}" — สั่งกี่ชิ้นครับ?`,
+        quickReply: QR_QTY,
       });
       return;
     }
@@ -461,6 +462,24 @@ async function handleMessage(event, client) {
       return;
     }
 
+    // ─── สั่งจากแคตตาล็อก (tap สั่งเลย ขณะ ordering) → ถามจำนวน ─
+    const isSingleLine = !text.includes('\n');
+    const hasExplicitQty = /[xX×*]\s*\d+/.test(text) || /\s+\d+\s*(ชิ้น|อัน|กล่อง|ถุง)?$/.test(text);
+    if (isSingleLine && !hasExplicitQty) {
+      const tapItem = findItem(text);
+      if (tapItem) {
+        state.pendingItem = tapItem;
+        state.prevState = 'ordering';
+        state.state = 'waiting_qty';
+        await send(client, event.replyToken, {
+          type: 'text',
+          text: `🛒 "${tapItem.name}" — สั่งกี่ชิ้นครับ?`,
+          quickReply: QR_QTY,
+        });
+        return;
+      }
+    }
+
     const lines = text.split('\n').filter(l => l.trim());
     const added = [];
     const notFound = [];
@@ -480,6 +499,32 @@ async function handleMessage(event, client) {
     replyText += `🛒 ตะกร้า ${state.cart.length} รายการ\nกด "สั่งครบแล้ว" เมื่อสั่งครบ`;
 
     await send(client, event.replyToken, { type: 'text', text: replyText, quickReply: QR_ORDERING });
+    return;
+  }
+
+  // ─── waiting_qty: รับจำนวนชิ้นจาก Quick Reply 1-5 ─────────────
+  if (state.state === 'waiting_qty') {
+    const num = parseInt(text.trim());
+    if (!isNaN(num) && num >= 1 && num <= 20) {
+      const item = state.pendingItem;
+      const parsed = { ...item, qty: num, subtotal: item.price * num };
+      state.cart.push(parsed);
+      state.state = 'ordering';
+      state.pendingItem = null;
+      state.prevState = null;
+      const total = state.cart.reduce((sum, i) => sum + i.price * i.qty, 0);
+      await send(client, event.replyToken, {
+        type: 'text',
+        text: `✅ เพิ่ม "${item.name}" x${num} แล้วครับ!\n💰 ${parsed.subtotal} บาท\n\n🛒 ตะกร้า ${state.cart.length} รายการ รวม ${total} บาท\nสั่งเพิ่มได้ หรือกด "สั่งครบแล้ว"`,
+        quickReply: QR_ORDERING,
+      });
+    } else {
+      await send(client, event.replyToken, {
+        type: 'text',
+        text: `กรุณาเลือกจำนวนครับ\n"${state.pendingItem?.name}" — สั่งกี่ชิ้น?`,
+        quickReply: QR_QTY,
+      });
+    }
     return;
   }
 

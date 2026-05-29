@@ -514,6 +514,14 @@ const QR_MENU = qr([
   { label: '📋 เมนูทั้งหมด', text: 'ดูเมนูทั้งหมด' },
 ]);
 
+const QR_QTY = qr([
+  { label: '1 ชิ้น', text: '1' },
+  { label: '2 ชิ้น', text: '2' },
+  { label: '3 ชิ้น', text: '3' },
+  { label: '4 ชิ้น', text: '4' },
+  { label: '5 ชิ้น', text: '5' },
+]);
+
 module.exports = {
   welcomeFlex,
   cartFlex,
@@ -529,5 +537,6 @@ module.exports = {
   QR_CONFIRM,
   QR_CANCEL,
   QR_MENU,
+  QR_QTY,
   adminQR,
 };
