@@ -328,6 +328,62 @@ function shippedFlex(orderId, trackingNo) {
   };
 }
 
+function qtyPickerFlex(item, qty) {
+  const subtotal = item.price * qty;
+  return {
+    type: 'flex',
+    altText: `${item.name} — เลือกจำนวน`,
+    contents: {
+      type: 'bubble',
+      header: {
+        type: 'box', layout: 'vertical', backgroundColor: '#C0392B', paddingAll: '16px',
+        contents: [
+          { type: 'text', text: item.name, weight: 'bold', color: '#FFFFFF', size: 'md', wrap: true },
+          { type: 'text', text: `฿${item.price.toLocaleString()} / ชิ้น`, color: '#FFD0CC', size: 'sm', margin: 'xs' },
+        ],
+      },
+      body: {
+        type: 'box', layout: 'vertical', paddingAll: 'xl', spacing: 'lg',
+        contents: [
+          {
+            type: 'box', layout: 'horizontal', spacing: 'md',
+            contents: [
+              {
+                type: 'button',
+                action: { type: 'message', label: '−', text: `qty- ${item.name}` },
+                style: 'secondary', height: 'sm', flex: 1,
+              },
+              {
+                type: 'text', text: String(qty),
+                size: 'xxl', weight: 'bold', align: 'center', gravity: 'center',
+                color: '#1a1a1a', flex: 1,
+              },
+              {
+                type: 'button',
+                action: { type: 'message', label: '+', text: `qty+ ${item.name}` },
+                style: 'primary', color: '#C0392B', height: 'sm', flex: 1,
+              },
+            ],
+          },
+          {
+            type: 'text',
+            text: `฿${subtotal.toLocaleString()}`,
+            size: 'xl', weight: 'bold', align: 'center', color: '#C0392B',
+          },
+        ],
+      },
+      footer: {
+        type: 'box', layout: 'vertical', paddingAll: 'md',
+        contents: [{
+          type: 'button',
+          action: { type: 'message', label: '✅ เพิ่มลงตะกร้า', text: `ลงตะกร้า ${item.name}` },
+          style: 'primary', color: '#27AE60',
+        }],
+      },
+    },
+  };
+}
+
 function catalogFlex() {
   return {
     type: 'flex',
@@ -528,6 +584,7 @@ module.exports = {
   statusFlex,
   cancelConfirmFlex,
   catalogFlex,
+  qtyPickerFlex,
   QR_START,
   QR_ORDERING,
   QR_CONFIRM,

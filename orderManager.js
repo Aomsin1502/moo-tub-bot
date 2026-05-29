@@ -3,8 +3,8 @@ const { appendOrder, updateOrderStatus } = require('./sheetsService');
 const {
   welcomeFlex, cartFlex, paymentFlex,
   slipReceivedFlex, orderConfirmedFlex, shippedFlex,
-  statusFlex, cancelConfirmFlex, catalogFlex,
-  QR_START, QR_ORDERING, QR_CONFIRM, QR_CANCEL, QR_MENU, QR_QTY, adminQR,
+  statusFlex, cancelConfirmFlex, catalogFlex, qtyPickerFlex,
+  QR_START, QR_ORDERING, QR_CONFIRM, QR_CANCEL, QR_MENU, adminQR,
 } = require('./messages');
 
 const PROMPTPAY = process.env.PROMPTPAY_NUMBER || '0931726399';
@@ -22,13 +22,13 @@ const userLastOrder = {};
 
 function getState(userId) {
   if (!userStates[userId]) {
-    userStates[userId] = { state: 'idle', cart: [], orderId: null, displayName: '', address: '', name: '', addressLine: '', phone: '', cancelPending: null, pendingItem: null, prevState: null };
+    userStates[userId] = { state: 'idle', cart: [], orderId: null, displayName: '', address: '', name: '', addressLine: '', phone: '', cancelPending: null, pendingItem: null, pendingQty: 1, prevState: null };
   }
   return userStates[userId];
 }
 
 function resetState(userId) {
-  userStates[userId] = { state: 'idle', cart: [], orderId: null, displayName: '', address: '', name: '', addressLine: '', phone: '', cancelPending: null, pendingItem: null, prevState: null };
+  userStates[userId] = { state: 'idle', cart: [], orderId: null, displayName: '', address: '', name: '', addressLine: '', phone: '', cancelPending: null, pendingItem: null, pendingQty: 1, prevState: null };
 }
 
 function generateOrderId() {
@@ -418,17 +418,14 @@ async function handleMessage(event, client) {
       return;
     }
 
-    // ─── สั่งจากแคตตาล็อก (tap สั่งเลย ขณะ idle) → ถามจำนวน ─────
+    // ─── สั่งจากแคตตาล็อก (tap สั่งเลย ขณะ idle) → qty picker ──
     const catalogItem = findItem(text);
     if (catalogItem) {
       state.pendingItem = catalogItem;
+      state.pendingQty = 1;
       state.prevState = 'idle';
       state.state = 'waiting_qty';
-      await send(client, event.replyToken, {
-        type: 'text',
-        text: `🛒 "${catalogItem.name}" — สั่งกี่ชิ้นครับ?`,
-        quickReply: QR_QTY,
-      });
+      await send(client, event.replyToken, qtyPickerFlex(catalogItem, 1));
       return;
     }
 
@@ -492,25 +489,25 @@ async function handleMessage(event, client) {
         });
         return;
       }
-      state.state = 'confirming';
-      await send(client, event.replyToken, cartFlex(state.cart, true));
+      state.state = 'waiting_name';
+      await send(client, event.replyToken, [
+        cartFlex(state.cart, false),
+        { type: 'text', text: '👤 กรุณาพิมพ์ชื่อ-สกุล ผู้รับสินค้า', quickReply: QR_CANCEL },
+      ]);
       return;
     }
 
-    // ─── สั่งจากแคตตาล็อก (tap สั่งเลย ขณะ ordering) → ถามจำนวน ─
+    // ─── สั่งจากแคตตาล็อก (tap สั่งเลย ขณะ ordering) → qty picker ─
     const isSingleLine = !text.includes('\n');
     const hasExplicitQty = /[xX×*]\s*\d+/.test(text) || /\s+\d+\s*(ชิ้น|อัน|กล่อง|ถุง)?$/.test(text);
     if (isSingleLine && !hasExplicitQty) {
       const tapItem = findItem(text);
       if (tapItem) {
         state.pendingItem = tapItem;
+        state.pendingQty = 1;
         state.prevState = 'ordering';
         state.state = 'waiting_qty';
-        await send(client, event.replyToken, {
-          type: 'text',
-          text: `🛒 "${tapItem.name}" — สั่งกี่ชิ้นครับ?`,
-          quickReply: QR_QTY,
-        });
+        await send(client, event.replyToken, qtyPickerFlex(tapItem, 1));
         return;
       }
     }
@@ -537,15 +534,29 @@ async function handleMessage(event, client) {
     return;
   }
 
-  // ─── waiting_qty: รับจำนวนชิ้นจาก Quick Reply 1-5 ─────────────
+  // ─── waiting_qty: กด +/- และ เพิ่มลงตะกร้า ────────────────────
   if (state.state === 'waiting_qty') {
-    const num = parseInt(text.trim());
-    if (!isNaN(num) && num >= 1 && num <= 20) {
-      const item = state.pendingItem;
-      const parsed = { ...item, qty: num, subtotal: item.price * num };
+    const item = state.pendingItem;
+
+    if (lower.startsWith('qty+')) {
+      state.pendingQty = Math.min((state.pendingQty || 1) + 1, 20);
+      await send(client, event.replyToken, qtyPickerFlex(item, state.pendingQty));
+      return;
+    }
+
+    if (lower.startsWith('qty-')) {
+      state.pendingQty = Math.max((state.pendingQty || 1) - 1, 1);
+      await send(client, event.replyToken, qtyPickerFlex(item, state.pendingQty));
+      return;
+    }
+
+    if (lower.startsWith('ลงตะกร้า')) {
+      const qty = state.pendingQty || 1;
+      const parsed = { ...item, qty, subtotal: item.price * qty };
       state.cart.push(parsed);
       state.state = 'ordering';
       state.pendingItem = null;
+      state.pendingQty = 1;
       state.prevState = null;
       const total = state.cart.reduce((sum, i) => sum + i.price * i.qty, 0);
       try {
@@ -553,24 +564,22 @@ async function handleMessage(event, client) {
           catalogFlex(),
           {
             type: 'text',
-            text: `✅ เพิ่ม "${item.name}" x${num} แล้วครับ!\n🛒 ตะกร้า ${state.cart.length} รายการ รวม ${total} บาท\n\nสั่งเพิ่มหรือกด "สั่งครบแล้ว"`,
+            text: `✅ เพิ่ม "${item.name}" ×${qty} แล้วครับ!\n🛒 ตะกร้า ${state.cart.length} รายการ รวม ${total} บาท\n\nสั่งเพิ่มหรือกด "สั่งครบแล้ว"`,
             quickReply: QR_ORDERING,
           },
         ]);
       } catch (err) {
         await send(client, event.replyToken, {
           type: 'text',
-          text: `✅ เพิ่ม "${item.name}" x${num} แล้วครับ!\n🛒 ตะกร้า ${state.cart.length} รายการ รวม ${total} บาท`,
+          text: `✅ เพิ่ม "${item.name}" ×${qty} แล้ว รวม ${total} บาท`,
           quickReply: QR_ORDERING,
         });
       }
-    } else {
-      await send(client, event.replyToken, {
-        type: 'text',
-        text: `กรุณาเลือกจำนวนครับ\n"${state.pendingItem?.name}" — สั่งกี่ชิ้น?`,
-        quickReply: QR_QTY,
-      });
+      return;
     }
+
+    // fallback: แสดง picker อีกครั้ง
+    await send(client, event.replyToken, qtyPickerFlex(item, state.pendingQty || 1));
     return;
   }
 
