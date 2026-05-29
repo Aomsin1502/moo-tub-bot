@@ -300,11 +300,11 @@ function shippedFlex(orderId, trackingNo) {
 }
 
 const STATUS_CONFIG = {
-  'รอยืนยัน':         { color: '#E67E22', icon: '⏳', label: 'รอร้านยืนยัน',   canCancel: true,  hasFee: false },
-  'กำลัง Packing':    { color: '#2980B9', icon: '📦', label: 'กำลัง Packing',  canCancel: true,  hasFee: true  },
-  'รออนุมัติยกเลิก':  { color: '#7F8C8D', icon: '🔄', label: 'รอร้านอนุมัติ',  canCancel: false, hasFee: false },
-  'จัดส่งแล้ว':       { color: '#7D3C98', icon: '🚚', label: 'จัดส่งแล้ว',     canCancel: false, hasFee: false },
-  'ยกเลิก':           { color: '#95A5A6', icon: '❌', label: 'ยกเลิกแล้ว',     canCancel: false, hasFee: false },
+  'รอยืนยัน':         { color: '#E67E22', icon: '⏳', label: 'รอร้านยืนยัน',   canCancel: false },
+  'กำลัง Packing':    { color: '#2980B9', icon: '📦', label: 'กำลัง Packing',  canCancel: false },
+  'รออนุมัติยกเลิก':  { color: '#7F8C8D', icon: '🔄', label: 'รอร้านอนุมัติ',  canCancel: false },
+  'จัดส่งแล้ว':       { color: '#7D3C98', icon: '🚚', label: 'จัดส่งแล้ว',     canCancel: false },
+  'ยกเลิก':           { color: '#95A5A6', icon: '❌', label: 'ยกเลิกแล้ว',     canCancel: false },
 };
 
 function statusFlex(orderId, orderData) {

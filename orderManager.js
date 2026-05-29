@@ -353,31 +353,11 @@ async function handleMessage(event, client) {
 
   // ─── ยกเลิกออเดอร์ (post-order) ─────────────────────────────
   if (lower === 'ยกเลิกออเดอร์') {
-    const lastOrderId = userLastOrder[userId];
-    const order = lastOrderId ? orderStatus[lastOrderId] : null;
-
-    if (!order || ['จัดส่งแล้ว', 'ยกเลิก'].includes(order.status)) {
-      const msg = !order
-        ? '📦 ไม่พบออเดอร์ที่สามารถยกเลิกได้ครับ'
-        : order.status === 'จัดส่งแล้ว'
-          ? '🚚 ออเดอร์จัดส่งไปแล้ว ไม่สามารถยกเลิกได้ครับ'
-          : '❌ ออเดอร์ถูกยกเลิกไปแล้วครับ';
-      await send(client, event.replyToken, { type: 'text', text: msg, quickReply: QR_START });
-      return;
-    }
-
-    if (order.status === 'รออนุมัติยกเลิก') {
-      await send(client, event.replyToken, {
-        type: 'text',
-        text: '🔄 คำขอยกเลิกของคุณกำลังรอร้านอนุมัติอยู่ครับ 🙏',
-        quickReply: QR_START,
-      });
-      return;
-    }
-
-    const hasFee = order.status === 'กำลัง Packing';
-    state.cancelPending = { orderId: lastOrderId, hasFee };
-    await send(client, event.replyToken, cancelConfirmFlex(lastOrderId, hasFee));
+    await send(client, event.replyToken, {
+      type: 'text',
+      text: '❌ ไม่สามารถยกเลิกได้ครับ\n\nเนื่องจากท่านชำระเงินแล้ว ทางร้านไม่รับยกเลิกออเดอร์หลังจากชำระเงินทุกกรณีครับ\n\nหากมีปัญหา กรุณาติดต่อร้านโดยตรงครับ 🙏',
+      quickReply: QR_START,
+    });
     return;
   }
 
