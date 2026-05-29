@@ -49,6 +49,18 @@ function getMenuText() {
   return t;
 }
 
+function addToCart(state, item) {
+  const existing = state.cart.find(i => i.name === item.name);
+  if (existing) {
+    existing.qty += 1;
+    existing.subtotal = existing.price * existing.qty;
+    return existing;
+  }
+  const newItem = { ...item, qty: 1, subtotal: item.price };
+  state.cart.push(newItem);
+  return newItem;
+}
+
 function findItem(text) {
   const norm = text.toLowerCase().trim();
   for (const item of FLAT_ITEMS) {
@@ -418,14 +430,17 @@ async function handleMessage(event, client) {
       return;
     }
 
-    // ─── สั่งจากแคตตาล็อก (tap สั่งเลย ขณะ idle) → qty picker ──
+    // ─── กด สั่งเลย (idle) → เพิ่มทันที ────────────────────────
     const catalogItem = findItem(text);
     if (catalogItem) {
-      state.pendingItem = catalogItem;
-      state.pendingQty = 1;
-      state.prevState = 'idle';
-      state.state = 'waiting_qty';
-      await send(client, event.replyToken, qtyPickerFlex(catalogItem, 1));
+      state.state = 'ordering';
+      const added = addToCart(state, catalogItem);
+      const total = state.cart.reduce((s, i) => s + i.price * i.qty, 0);
+      await send(client, event.replyToken, {
+        type: 'text',
+        text: `✅ ${catalogItem.name} ×${added.qty}  (${added.subtotal} บาท)\n🛒 รวม ${total} บาท\n\nกด ➕ สั่งเพิ่ม หรือ ✅ สั่งครบแล้ว`,
+        quickReply: QR_ORDERING,
+      });
       return;
     }
 
@@ -489,25 +504,27 @@ async function handleMessage(event, client) {
         });
         return;
       }
-      state.state = 'waiting_name';
+      state.state = 'waiting_address';
       await send(client, event.replyToken, [
         cartFlex(state.cart, false),
-        { type: 'text', text: '👤 กรุณาพิมพ์ชื่อ-สกุล ผู้รับสินค้า', quickReply: QR_CANCEL },
+        { type: 'text', text: '📦 กรุณาพิมพ์ที่อยู่จัดส่ง\n\nตัวอย่าง:\nสมชาย ใจดี 0812345678\n123 ม.4 ต.บ้านใหม่ อ.เมือง\nจ.ชุมพร 86000', quickReply: QR_CANCEL },
       ]);
       return;
     }
 
-    // ─── สั่งจากแคตตาล็อก (tap สั่งเลย ขณะ ordering) → qty picker ─
+    // ─── กด สั่งเลย (ordering) → เพิ่มทันที ───────────────────
     const isSingleLine = !text.includes('\n');
     const hasExplicitQty = /[xX×*]\s*\d+/.test(text) || /\s+\d+\s*(ชิ้น|อัน|กล่อง|ถุง)?$/.test(text);
     if (isSingleLine && !hasExplicitQty) {
       const tapItem = findItem(text);
       if (tapItem) {
-        state.pendingItem = tapItem;
-        state.pendingQty = 1;
-        state.prevState = 'ordering';
-        state.state = 'waiting_qty';
-        await send(client, event.replyToken, qtyPickerFlex(tapItem, 1));
+        const added = addToCart(state, tapItem);
+        const total = state.cart.reduce((s, i) => s + i.price * i.qty, 0);
+        await send(client, event.replyToken, {
+          type: 'text',
+          text: `✅ ${tapItem.name} ×${added.qty}  (${added.subtotal} บาท)\n🛒 รวม ${total} บาท\n\nกด ➕ สั่งเพิ่ม หรือ ✅ สั่งครบแล้ว`,
+          quickReply: QR_ORDERING,
+        });
         return;
       }
     }
@@ -601,38 +618,12 @@ async function handleMessage(event, client) {
     return;
   }
 
-  if (state.state === 'waiting_name') {
-    state.name = text;
-    state.state = 'waiting_address_line';
-    await send(client, event.replyToken, {
-      type: 'text',
-      text: '📍 กรุณาพิมพ์ที่อยู่จัดส่ง\n\nเช่น: 123 ม.4 ต.บ้านใหม่\nอ.เมือง จ.ชุมพร 86000',
-      quickReply: QR_CANCEL,
-    });
-    return;
-  }
-
-  if (state.state === 'waiting_address_line') {
-    state.addressLine = text;
-    state.state = 'waiting_phone';
-    await send(client, event.replyToken, {
-      type: 'text',
-      text: '📱 กรุณาพิมพ์เบอร์โทรศัพท์',
-      quickReply: QR_CANCEL,
-    });
-    return;
-  }
-
-  if (state.state === 'waiting_phone') {
-    state.phone = text;
-    state.address = `${state.name} | ${state.addressLine} | โทร: ${state.phone}`;
+  if (state.state === 'waiting_address') {
+    state.address = text;
     state.orderId = generateOrderId();
     state.state = 'waiting_slip';
     const total = state.cart.reduce((sum, i) => sum + i.price * i.qty, 0);
-    await send(client, event.replyToken, [
-      cartFlex(state.cart, false),
-      paymentFlex(state.orderId, total),
-    ]);
+    await send(client, event.replyToken, paymentFlex(state.orderId, total));
     return;
   }
 
