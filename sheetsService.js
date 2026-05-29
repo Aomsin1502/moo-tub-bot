@@ -36,4 +36,34 @@ async function appendOrder(data) {
   });
 }
 
-module.exports = { appendOrder };
+async function updateOrderStatus(orderId, status, trackingNo = '') {
+  const sheets = await getSheets();
+  if (!sheets) {
+    console.log('[Sheets] updateOrderStatus:', orderId, status, trackingNo);
+    return;
+  }
+  try {
+    const res = await sheets.spreadsheets.values.get({
+      spreadsheetId: process.env.GOOGLE_SHEET_ID,
+      range: 'ออเดอร์!B:B',
+    });
+    const rows = res.data.values || [];
+    const rowIndex = rows.findIndex(row => row[0] === orderId);
+    if (rowIndex === -1) {
+      console.log('[Sheets] ไม่พบ orderId:', orderId);
+      return;
+    }
+    const sheetRow = rowIndex + 1;
+    await sheets.spreadsheets.values.update({
+      spreadsheetId: process.env.GOOGLE_SHEET_ID,
+      range: `ออเดอร์!H${sheetRow}:I${sheetRow}`,
+      valueInputOption: 'USER_ENTERED',
+      requestBody: { values: [[status, trackingNo]] },
+    });
+    console.log('[Sheets] updated row', sheetRow, '→', status, trackingNo);
+  } catch (err) {
+    console.error('[Sheets] updateOrderStatus error:', err.message);
+  }
+}
+
+module.exports = { appendOrder, updateOrderStatus };

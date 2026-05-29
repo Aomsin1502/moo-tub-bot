@@ -1,5 +1,5 @@
 const { MENU, FLAT_ITEMS } = require('./menu');
-const { appendOrder } = require('./sheetsService');
+const { appendOrder, updateOrderStatus } = require('./sheetsService');
 const {
   welcomeFlex, cartFlex, paymentFlex,
   slipReceivedFlex, orderConfirmedFlex, shippedFlex,
@@ -164,6 +164,7 @@ async function handleMessage(event, client) {
       const order = orderStatus[orderId];
       if (order && order.status === 'รอยืนยัน') {
         order.status = 'กำลัง Packing';
+        updateOrderStatus(orderId, 'กำลัง Packing').catch(e => console.error('Sheets confirm error:', e.message));
         try {
           await client.pushMessage({ to: order.userId, messages: [orderConfirmedFlex(orderId)] });
         } catch (err) { console.error('Push customer error:', err.message); }
@@ -186,6 +187,7 @@ async function handleMessage(event, client) {
       if (order) {
         order.status = 'จัดส่งแล้ว';
         order.trackingNo = trackingNo;
+        updateOrderStatus(orderId, 'จัดส่งแล้ว', trackingNo).catch(e => console.error('Sheets ship error:', e.message));
         try {
           await client.pushMessage({ to: order.userId, messages: [shippedFlex(orderId, trackingNo)] });
         } catch (err) { console.error('Push customer error:', err.message); }
