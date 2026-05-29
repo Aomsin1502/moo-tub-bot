@@ -352,15 +352,23 @@ function statusFlex(orderId, orderData) {
           }] : []),
         ],
       },
-      ...(cfg.canCancel ? {
+      ...((cfg.canCancel || trackingNo) ? {
         footer: {
-          type: 'box', layout: 'vertical',
-          contents: [{
-            type: 'button',
-            action: { type: 'message', label: '❌ ยกเลิกออเดอร์', text: 'ยกเลิกออเดอร์' },
-            style: 'secondary',
-            color: '#E74C3C',
-          }],
+          type: 'box', layout: 'vertical', spacing: 'sm',
+          contents: [
+            ...(trackingNo ? [{
+              type: 'button',
+              action: { type: 'uri', label: '🚚 ติดตามพัสดุ', uri: `https://track.thailandpost.co.th/?barcode=${trackingNo}` },
+              style: 'primary',
+              color: '#7D3C98',
+            }] : []),
+            ...(cfg.canCancel ? [{
+              type: 'button',
+              action: { type: 'message', label: '❌ ยกเลิกออเดอร์', text: 'ยกเลิกออเดอร์' },
+              style: 'secondary',
+              color: '#E74C3C',
+            }] : []),
+          ],
         },
       } : {}),
     },
