@@ -326,7 +326,7 @@ function catalogFlex() {
           type: 'image',
           url: item.imageUrl,
           size: 'full',
-          aspectRatio: '20:13',
+          aspectRatio: '1:1',
           aspectMode: 'cover',
           action: { type: 'message', label: 'สั่งเลย', text: item.name },
         },
