@@ -592,6 +592,73 @@ function adminOrderFlex(orderId, cart, total, address, displayName) {
   };
 }
 
+function adminTrackingReviewFlex(pairs, unpairedTrackings, unpairedOrders) {
+  const bodyContents = [];
+
+  pairs.forEach((pair, i) => {
+    if (i > 0) bodyContents.push({ type: 'separator', margin: 'sm' });
+    bodyContents.push({
+      type: 'box', layout: 'vertical', paddingTop: 'xs', paddingBottom: 'xs',
+      contents: [
+        { type: 'text', text: pair.trackingNo, size: 'sm', weight: 'bold', color: '#7D3C98', wrap: true },
+        { type: 'text', text: `✅  ${pair.displayName}`, size: 'sm', color: '#27AE60' },
+        { type: 'text', text: `     ${pair.orderId}`, size: 'xs', color: '#888888' },
+      ],
+    });
+  });
+
+  if (unpairedTrackings.length > 0) {
+    bodyContents.push({ type: 'separator', margin: 'md' });
+    bodyContents.push({ type: 'text', text: '❓ อ่านได้แต่จับคู่ไม่ได้:', size: 'xs', color: '#E74C3C', weight: 'bold' });
+    unpairedTrackings.forEach(t => {
+      bodyContents.push({ type: 'text', text: t, size: 'xs', color: '#E74C3C' });
+    });
+  }
+
+  if (unpairedOrders.length > 0) {
+    bodyContents.push({ type: 'separator', margin: 'md' });
+    bodyContents.push({ type: 'text', text: '⚠️ ออเดอร์ที่ไม่มี tracking:', size: 'xs', color: '#E67E22', weight: 'bold' });
+    unpairedOrders.forEach(o => {
+      bodyContents.push({ type: 'text', text: `${o.orderId} — ${o.displayName}`, size: 'xs', color: '#E67E22', wrap: true });
+    });
+  }
+
+  return {
+    type: 'flex',
+    altText: `📋 พบ ${pairs.length + unpairedTrackings.length} tracking — รอยืนยัน`,
+    contents: {
+      type: 'bubble',
+      header: {
+        type: 'box', layout: 'vertical', backgroundColor: '#7D3C98', paddingAll: '16px',
+        contents: [
+          { type: 'text', text: '📋 ทบทวน tracking', weight: 'bold', color: '#FFFFFF', size: 'lg' },
+          {
+            type: 'text',
+            text: `พบ ${pairs.length + unpairedTrackings.length} หมายเลข  จับคู่ได้ ${pairs.length} ออเดอร์`,
+            color: '#D7BDE2', size: 'xs', wrap: true,
+          },
+        ],
+      },
+      body: {
+        type: 'box', layout: 'vertical', spacing: 'sm',
+        contents: bodyContents.length > 0 ? bodyContents : [
+          { type: 'text', text: 'ไม่พบ tracking ที่จับคู่ได้', color: '#888888', align: 'center' },
+        ],
+      },
+      ...(pairs.length > 0 ? {
+        footer: {
+          type: 'box', layout: 'vertical', paddingAll: 'md',
+          contents: [{
+            type: 'button',
+            action: { type: 'message', label: `✅ ยืนยัน — แจ้งลูกค้า ${pairs.length} คน`, text: 'ยืนยัน tracking' },
+            style: 'primary', color: '#27AE60',
+          }],
+        },
+      } : {}),
+    },
+  };
+}
+
 // Quick Reply helpers
 function qr(items) {
   return {
@@ -652,6 +719,7 @@ module.exports = {
   catalogFlex,
   qtyPickerFlex,
   adminOrderFlex,
+  adminTrackingReviewFlex,
   QR_START,
   QR_ORDERING,
   QR_CONFIRM,

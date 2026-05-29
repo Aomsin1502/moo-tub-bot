@@ -1,9 +1,10 @@
 const { MENU, FLAT_ITEMS } = require('./menu');
 const { appendOrder, updateOrderStatus } = require('./sheetsService');
+const { getLineImageBuffer, extractTrackingNumbers } = require('./visionService');
 const {
   welcomeFlex, cartFlex, paymentFlex,
   slipReceivedFlex, orderConfirmedFlex, shippedFlex,
-  statusFlex, cancelConfirmFlex, catalogFlex, qtyPickerFlex, adminOrderFlex,
+  statusFlex, cancelConfirmFlex, catalogFlex, qtyPickerFlex, adminOrderFlex, adminTrackingReviewFlex,
   QR_START, QR_ORDERING, QR_CONFIRM, QR_CANCEL, QR_MENU, adminQR,
 } = require('./messages');
 
@@ -19,6 +20,10 @@ const orderStatus = {};
 
 // userId → orderId (most recent placed order)
 const userLastOrder = {};
+
+// เก็บ tracking pairs ที่ admin กำลังรอยืนยัน
+// adminUserId → [{orderId, trackingNo, userId, displayName}]
+const adminPendingMatches = {};
 
 function getState(userId) {
   if (!userStates[userId]) {
@@ -113,8 +118,60 @@ async function handleMessage(event, client) {
     state.displayName = profile.displayName;
   } catch (_) {}
 
-  // ─── รับสลิป (รูปภาพ) ───────────────────────────────────────
+  // ─── รับรูปภาพ ──────────────────────────────────────────────
   if (event.message.type === 'image') {
+
+    // Admin ส่งรูปสลิปไปรษณีไทย → OCR tracking numbers
+    if (ADMIN_USER_ID && userId === ADMIN_USER_ID) {
+      await send(client, event.replyToken, {
+        type: 'text', text: '🔍 กำลังอ่าน tracking...',
+      });
+      try {
+        const imageBuffer = await getLineImageBuffer(event.message.id);
+        const trackingNumbers = await extractTrackingNumbers(imageBuffer);
+
+        if (trackingNumbers.length === 0) {
+          await client.pushMessage({
+            to: ADMIN_USER_ID,
+            messages: [{ type: 'text', text: '⚠️ อ่านเลข tracking ไม่พบครับ\nลองถ่ายใหม่ให้ชัดขึ้น หรือแสงสว่างพอครับ' }],
+          });
+          return;
+        }
+
+        // ดึง orders ที่สถานะ "กำลัง Packing" เรียงตาม orderId (= ตามเวลา)
+        const pendingOrders = Object.entries(orderStatus)
+          .filter(([, o]) => o.status === 'กำลัง Packing')
+          .sort(([a], [b]) => a.localeCompare(b))
+          .map(([orderId, o]) => ({ orderId, ...o }));
+
+        // จับคู่ตามลำดับ (positional)
+        const pairs = [];
+        trackingNumbers.forEach((trackingNo, i) => {
+          if (i < pendingOrders.length) {
+            const o = pendingOrders[i];
+            pairs.push({ orderId: o.orderId, trackingNo, userId: o.userId, displayName: o.displayName });
+          }
+        });
+        const unpairedTrackings = trackingNumbers.slice(pendingOrders.length);
+        const unpairedOrders   = pendingOrders.slice(trackingNumbers.length);
+
+        adminPendingMatches[userId] = pairs;
+
+        await client.pushMessage({
+          to: ADMIN_USER_ID,
+          messages: [adminTrackingReviewFlex(pairs, unpairedTrackings, unpairedOrders)],
+        });
+      } catch (err) {
+        console.error('[Admin OCR error]', err.message);
+        await client.pushMessage({
+          to: ADMIN_USER_ID,
+          messages: [{ type: 'text', text: `❌ เกิดข้อผิดพลาด: ${err.message}` }],
+        });
+      }
+      return;
+    }
+
+    // ลูกค้าส่งสลิปโอนเงิน
     if (state.state === 'waiting_slip') {
       const orderId = state.orderId;
       const total = state.cart.reduce((sum, i) => sum + i.price * i.qty, 0);
@@ -173,6 +230,36 @@ async function handleMessage(event, client) {
 
   // ─── Admin commands ────────────────────────────────────────
   if (ADMIN_USER_ID && userId === ADMIN_USER_ID) {
+
+    // ยืนยัน tracking batch (หลัง OCR review)
+    if (lower === 'ยืนยัน tracking') {
+      const matches = adminPendingMatches[userId];
+      if (!matches || matches.length === 0) {
+        await send(client, event.replyToken, { type: 'text', text: '⚠️ ไม่มี tracking รอยืนยันครับ\nกรุณาส่งรูปสลิปไปรษณีไทยก่อนครับ' });
+        return;
+      }
+      let successCount = 0;
+      for (const match of matches) {
+        const order = orderStatus[match.orderId];
+        if (order) {
+          order.status = 'จัดส่งแล้ว';
+          order.trackingNo = match.trackingNo;
+          updateOrderStatus(match.orderId, 'จัดส่งแล้ว', match.trackingNo)
+            .catch(e => console.error('Sheets ship error:', e.message));
+          try {
+            await client.pushMessage({ to: match.userId, messages: [shippedFlex(match.orderId, match.trackingNo)] });
+            successCount++;
+          } catch (err) { console.error('Push customer error:', err.message); }
+        }
+      }
+      delete adminPendingMatches[userId];
+      await send(client, event.replyToken, {
+        type: 'text',
+        text: `✅ แจ้งลูกค้าแล้ว ${successCount} คน\n📋 อัปเดต Sheets เรียบร้อยครับ`,
+      });
+      return;
+    }
+
     const confirmMatch = text.match(/^ยืนยัน\s+(ORD\S+)/i);
     const shippedMatch = text.match(/^จัดส่ง\s+(ORD\S+)(?:\s+(.+))?/i);
     const approvecancelMatch = text.match(/^อนุมัติยกเลิก\s+(ORD\S+)/i);
