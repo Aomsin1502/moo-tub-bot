@@ -3,7 +3,7 @@ const { appendOrder, updateOrderStatus } = require('./sheetsService');
 const {
   welcomeFlex, cartFlex, paymentFlex,
   slipReceivedFlex, orderConfirmedFlex, shippedFlex,
-  statusFlex, cancelConfirmFlex, catalogFlex, qtyPickerFlex,
+  statusFlex, cancelConfirmFlex, catalogFlex, qtyPickerFlex, adminOrderFlex,
   QR_START, QR_ORDERING, QR_CONFIRM, QR_CANCEL, QR_MENU, adminQR,
 } = require('./messages');
 
@@ -29,6 +29,11 @@ function getState(userId) {
 
 function resetState(userId) {
   userStates[userId] = { state: 'idle', cart: [], orderId: null, displayName: '', address: '', name: '', addressLine: '', phone: '', cancelPending: null, pendingItem: null, pendingQty: 1, prevState: null };
+}
+
+function isOpenNow() {
+  const bkkHour = (new Date().getUTCHours() + 7) % 24;
+  return bkkHour >= 8 && bkkHour < 20;
 }
 
 function generateOrderId() {
@@ -133,17 +138,18 @@ async function handleMessage(event, client) {
       };
       userLastOrder[userId] = orderId;
 
-      // แจ้ง admin พร้อม Quick Reply ยืนยัน
+      // แจ้ง admin — Flex Message (ปุ่มอยู่ถาวร ไม่หายเมื่อเลื่อน)
       if (ADMIN_USER_ID) {
-        const cartLines = state.cart.map(i => `• ${i.name}${i.qty > 1 ? ` x${i.qty}` : ''} = ${i.price * i.qty} บ.`).join('\n');
         try {
           await client.pushMessage({
             to: ADMIN_USER_ID,
-            messages: [{
-              type: 'text',
-              text: `🔔 ออเดอร์ใหม่!\n══════════════\n${cartLines}\n══════════════\n💰 รวม: ${total} บาท\n📦 ที่อยู่: ${state.address}\n👤 ลูกค้า: ${state.displayName}\n🆔 ${orderId}\n\nพิมพ์ "จัดส่ง ${orderId} [เลขพัสดุ]" เมื่อส่ง`,
-              quickReply: adminQR(orderId),
-            }],
+            messages: [
+              adminOrderFlex(orderId, state.cart, total, state.address, state.displayName),
+              {
+                type: 'text',
+                text: `📝 จัดส่ง: พิมพ์\n"จัดส่ง ${orderId} [เลขพัสดุ]"`,
+              },
+            ],
           });
         } catch (err) { console.error('Push admin error:', err.message); }
       }
@@ -443,10 +449,13 @@ async function handleMessage(event, client) {
     if (['สั่ง', 'order', 'ออเดอร์', 'สั่งซื้อ'].includes(lower)) {
       state.state = 'ordering';
       state.cart = [];
+      const offHoursNote = !isOpenNow()
+        ? '\n\n⏰ ขณะนี้นอกเวลาทำการ (08:00–20:00 น.)\nร้านจะดำเนินการในวันทำการถัดไปครับ 🙏'
+        : '';
       try {
         await send(client, event.replyToken, [
           catalogFlex(),
-          { type: 'text', text: '🛒 กด 1 / 2 / 3 ชิ้น ที่สินค้าที่ต้องการครับ!', quickReply: QR_ORDERING },
+          { type: 'text', text: `🛒 กด 1 / 2 / 3 ชิ้น ที่สินค้าที่ต้องการครับ!${offHoursNote}`, quickReply: QR_ORDERING },
         ]);
       } catch (err) {
         console.error('catalogFlex error:', err.message);
@@ -497,6 +506,21 @@ async function handleMessage(event, client) {
         } else {
           await send(client, event.replyToken, { ...cartFlex(state.cart, false), quickReply: QR_ORDERING });
         }
+      } else {
+        await send(client, event.replyToken, {
+          type: 'text', text: `⚠️ ไม่พบ "${itemName}" ในตะกร้าครับ`, quickReply: QR_ORDERING,
+        });
+      }
+      return;
+    }
+
+    if (text.startsWith('เพิ่ม ')) {
+      const itemName = text.replace(/^เพิ่ม\s+/, '').trim();
+      const cartItem = state.cart.find(i => i.name.toLowerCase() === itemName.toLowerCase());
+      if (cartItem) {
+        addToCart(state, cartItem);
+        state.state = 'ordering';
+        await send(client, event.replyToken, { ...cartFlex(state.cart, false), quickReply: QR_ORDERING });
       } else {
         await send(client, event.replyToken, {
           type: 'text', text: `⚠️ ไม่พบ "${itemName}" ในตะกร้าครับ`, quickReply: QR_ORDERING,

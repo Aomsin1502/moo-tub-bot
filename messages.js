@@ -92,6 +92,13 @@ function cartFlex(cart, showConfirmButtons = false) {
         },
         {
           type: 'box', layout: 'vertical', flex: 1, justifyContent: 'center', alignItems: 'center',
+          action: { type: 'message', label: '+', text: `เพิ่ม ${item.name}` },
+          contents: [
+            { type: 'text', text: '+', size: 'md', align: 'center', color: '#27AE60', weight: 'bold' },
+          ],
+        },
+        {
+          type: 'box', layout: 'vertical', flex: 1, justifyContent: 'center', alignItems: 'center',
           action: { type: 'message', label: 'ลบ', text: `ลบ ${item.name}` },
           contents: [
             { type: 'text', text: '✕', size: 'sm', align: 'center', color: '#E74C3C', weight: 'bold' },
@@ -529,6 +536,62 @@ function cancelConfirmFlex(orderId, hasFee) {
   };
 }
 
+function adminOrderFlex(orderId, cart, total, address, displayName) {
+  const cartLines = cart.map(i => ({
+    type: 'box', layout: 'horizontal', paddingTop: 'xs', paddingBottom: 'xs',
+    contents: [
+      { type: 'text', text: `• ${i.name}`, flex: 5, size: 'sm', wrap: true, color: '#333333' },
+      { type: 'text', text: `×${i.qty}`, flex: 1, size: 'sm', align: 'center', color: '#555555' },
+      { type: 'text', text: `${i.price * i.qty}฿`, flex: 2, size: 'sm', align: 'end', weight: 'bold', color: '#C0392B' },
+    ],
+  }));
+
+  return {
+    type: 'flex',
+    altText: `🔔 ออเดอร์ใหม่! ${orderId} รวม ${total} บาท`,
+    contents: {
+      type: 'bubble',
+      header: {
+        type: 'box', layout: 'vertical', backgroundColor: '#E67E22', paddingAll: '16px',
+        contents: [
+          { type: 'text', text: '🔔 ออเดอร์ใหม่!', weight: 'bold', color: '#FFFFFF', size: 'xl' },
+          { type: 'text', text: orderId, color: '#FDE8CC', size: 'xs', margin: 'xs' },
+        ],
+      },
+      body: {
+        type: 'box', layout: 'vertical', spacing: 'xs',
+        contents: [
+          ...cartLines,
+          { type: 'separator', margin: 'md' },
+          {
+            type: 'box', layout: 'horizontal', margin: 'md',
+            contents: [
+              { type: 'text', text: '💰 รวม', weight: 'bold', flex: 2 },
+              { type: 'text', text: `${total} บาท`, weight: 'bold', color: '#C0392B', flex: 1, align: 'end', size: 'lg' },
+            ],
+          },
+          { type: 'separator', margin: 'md' },
+          {
+            type: 'box', layout: 'vertical', margin: 'md', spacing: 'xs',
+            contents: [
+              { type: 'text', text: `👤 ${displayName}`, size: 'sm', color: '#333333' },
+              { type: 'text', text: `📦 ${address}`, size: 'sm', color: '#555555', wrap: true },
+            ],
+          },
+        ],
+      },
+      footer: {
+        type: 'box', layout: 'vertical', paddingAll: 'md',
+        contents: [{
+          type: 'button',
+          action: { type: 'message', label: '✅ ยืนยันออเดอร์', text: `ยืนยัน ${orderId}` },
+          style: 'primary', color: '#27AE60',
+        }],
+      },
+    },
+  };
+}
+
 // Quick Reply helpers
 function qr(items) {
   return {
@@ -588,6 +651,7 @@ module.exports = {
   cancelConfirmFlex,
   catalogFlex,
   qtyPickerFlex,
+  adminOrderFlex,
   QR_START,
   QR_ORDERING,
   QR_CONFIRM,
