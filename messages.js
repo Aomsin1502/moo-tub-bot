@@ -1,15 +1,21 @@
 const PROMPTPAY = process.env.PROMPTPAY_NUMBER || '0931726399';
 
-// ─── แคตตาล็อกสินค้า (8 รูปทดสอบ — เพิ่ม/แก้ imageUrl ได้เลย) ────────────
+// ─── แคตตาล็อกสินค้า ────────────────────────────────────────────────────────
+// TEST: ใช้รูป LINE CDN เพื่อยืนยัน Flex structure — ถ้าขึ้นรูปให้เปลี่ยน imageUrl เป็นรูปจริง
+const _TEST_IMG = [
+  'https://developers-resource.landpress.line.me/fx/img/01_1_cafe.png',
+  'https://developers-resource.landpress.line.me/fx/img/01_2_news.png',
+  'https://developers-resource.landpress.line.me/fx/img/01_5_restaurant.png',
+];
 const CATALOG_ITEMS = [
-  { name: 'หมูทุบ 130g',    price: 100, imageUrl: 'https://i.ibb.co/xqp8rGv2/130.png' },
-  { name: 'หมูทุบ 500g',    price: 350, imageUrl: 'https://i.ibb.co/jkzdWNsw/500.png' },
-  { name: 'หมูแท่ง 130g',   price: 100, imageUrl: 'https://i.ibb.co/RWbcKms/130.png'  },
-  { name: 'หมูแท่ง 500g',   price: 350, imageUrl: 'https://i.ibb.co/ycRzyMQt/500.png' },
-  { name: 'หมูสวรรค์ 500g', price: 300, imageUrl: 'https://i.ibb.co/N24mBgbb/500.png' },
-  { name: 'หมูฝอย 170g',    price: 100, imageUrl: 'https://i.ibb.co/chH9wQ7Q/180.png' },
-  { name: 'หมูหยอง 140g',   price: 100, imageUrl: 'https://i.ibb.co/gZgnz5dk/150.png' },
-  { name: 'น้ำพริกหมูทุบ',  price: 50,  imageUrl: 'https://i.ibb.co/1t3cSsFk/image.png' },
+  { name: 'หมูทุบ 130g',    price: 100, imageUrl: _TEST_IMG[0] },
+  { name: 'หมูทุบ 500g',    price: 350, imageUrl: _TEST_IMG[1] },
+  { name: 'หมูแท่ง 130g',   price: 100, imageUrl: _TEST_IMG[2] },
+  { name: 'หมูแท่ง 500g',   price: 350, imageUrl: _TEST_IMG[0] },
+  { name: 'หมูสวรรค์ 500g', price: 300, imageUrl: _TEST_IMG[1] },
+  { name: 'หมูฝอย 170g',    price: 100, imageUrl: _TEST_IMG[2] },
+  { name: 'หมูหยอง 140g',   price: 100, imageUrl: _TEST_IMG[0] },
+  { name: 'น้ำพริกหมูทุบ',  price: 50,  imageUrl: _TEST_IMG[1] },
 ];
 
 function welcomeFlex() {
