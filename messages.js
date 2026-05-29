@@ -3,15 +3,16 @@ const PROMPTPAY = process.env.PROMPTPAY_NUMBER || '0931726399';
 // ─── แคตตาล็อกสินค้า ────────────────────────────────────────────────────────
 // รูปอยู่ที่ /public/images/ — serve ผ่าน https://moo-tub-bot.onrender.com/images/
 const IMG = 'https://moo-tub-bot.onrender.com/images';
+const _img = f => `${IMG}/${encodeURIComponent(f)}`;
 const CATALOG_ITEMS = [
-  { name: 'หมูทุบ 130g',        price: 100, imageUrl: `${IMG}/moo-tub-130g.jpg`        },
-  { name: 'หมูทุบ 500g',        price: 350, imageUrl: `${IMG}/moo-tub-500g.jpg`        },
-  { name: 'หมูแท่ง 130g',       price: 100, imageUrl: `${IMG}/moo-tang-130g.jpg`       },
-  { name: 'หมูแท่ง 500g',       price: 350, imageUrl: `${IMG}/moo-tang-500g.jpg`       },
-  { name: 'หมูหยอง 150g',       price: 100, imageUrl: `${IMG}/moo-yong-150g.jpg`       },
-  { name: 'หมูฝอย 180g',        price: 100, imageUrl: `${IMG}/moo-foi-180g.jpg`        },
-  { name: 'น้ำพริกหมูทุบ',      price: 50,  imageUrl: `${IMG}/namprik-mootub.jpg`      },
-  { name: 'น้ำพริกกากหมู 500g', price: 250, imageUrl: `${IMG}/namprik-gakmu-500g.jpg`  },
+  { name: 'หมูทุบ 130g',        price: 100, imageUrl: _img('หมูทุบ 130 กรัม.jpg')        },
+  { name: 'หมูทุบ 500g',        price: 350, imageUrl: _img('หมูทุบ 500 กรัม.jpg')        },
+  { name: 'หมูแท่ง 130g',       price: 100, imageUrl: _img('หมูแท่ง 130 กรัม.jpg')       },
+  { name: 'หมูแท่ง 500g',       price: 350, imageUrl: _img('หมูแท่ง 500 กรัม.jpg')       },
+  { name: 'หมูหยอง 150g',       price: 100, imageUrl: _img('หมูหยอง 150 กรัม.jpg')       },
+  { name: 'หมูฝอย 180g',        price: 100, imageUrl: _img('หมูฝอย 180 กรัม.jpg')        },
+  { name: 'น้ำพริกหมูทุบ',      price: 50,  imageUrl: _img('น้ำพริกหมูทุบ.jpg')          },
+  { name: 'น้ำพริกกากหมู 500g', price: 250, imageUrl: _img('น้ำพริกกากหมู 500 กรัม.jpg') },
 ];
 
 function welcomeFlex() {
