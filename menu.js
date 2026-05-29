@@ -33,7 +33,7 @@ const MENU = [
   {
     category: '🐷 หมูฝอย',
     items: [
-      { name: 'หมูฝอย 170g', price: 100 },
+      { name: 'หมูฝอย 180g', price: 100 },
       { name: 'หมูฝอย 350g', price: 200 },
       { name: 'หมูฝอย 500g', price: 300 },
       { name: 'หมูฝอย 1000g', price: 600 },
@@ -49,7 +49,7 @@ const MENU = [
   {
     category: '🐷 หมูหยอง',
     items: [
-      { name: 'หมูหยอง 140g', price: 100 },
+      { name: 'หมูหยอง 150g', price: 100 },
       { name: 'หมูหยอง 500g', price: 300 },
       { name: 'หมูหยอง 1000g', price: 600 },
     ],
@@ -67,6 +67,7 @@ const MENU = [
     category: '🌶️ น้ำพริก',
     items: [
       { name: 'น้ำพริกกากหมู 200g', price: 100 },
+      { name: 'น้ำพริกกากหมู 500g', price: 250 },
       { name: 'น้ำพริกแมงดา (เปียก)', price: 50 },
       { name: 'น้ำพริกตาแดง (เปียก)', price: 50 },
       { name: 'น้ำพริกปลาย่าง (เปียก)', price: 50 },
