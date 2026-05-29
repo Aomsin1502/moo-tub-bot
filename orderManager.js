@@ -234,14 +234,19 @@ async function handleMessage(event, client) {
 
   // ─── แคตตาล็อกรูปสินค้า ──────────────────────────────────────
   if (['เมนู', 'menu', 'สินค้า', 'ดูเมนู', 'แคตตาล็อก', 'catalog', 'รูปสินค้า'].includes(lower)) {
-    await send(client, event.replyToken, [
-      catalogFlex(),
-      {
-        type: 'text',
-        text: '🐷 แตะ 🛒 สั่งเลย ที่รูปสินค้าได้เลยครับ!\nหรือกด "เมนูทั้งหมด" เพื่อดูรายการแบบข้อความ',
-        quickReply: QR_MENU,
-      },
-    ]);
+    try {
+      await send(client, event.replyToken, [
+        catalogFlex(),
+        {
+          type: 'text',
+          text: '🐷 แตะ สั่งเลย ที่รูปสินค้าได้เลยครับ!\nหรือกด "เมนูทั้งหมด" เพื่อดูรายการแบบข้อความ',
+          quickReply: QR_MENU,
+        },
+      ]);
+    } catch (err) {
+      console.error('❌ catalogFlex error:', err.response?.data || err.message);
+      await send(client, event.replyToken, { type: 'text', text: getMenuText(), quickReply: QR_START });
+    }
     return;
   }
 

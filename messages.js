@@ -314,25 +314,24 @@ function shippedFlex(orderId, trackingNo) {
 function catalogFlex() {
   return {
     type: 'flex',
-    altText: '📸 สินค้าร้านหมูทุบแม่บัวเผื่อน — แตะ 🛒 สั่งเลย ได้เลยครับ!',
+    altText: 'สินค้าร้านหมูทุบแม่บัวเผื่อน - แตะ สั่งเลย ได้เลยครับ',
     contents: {
       type: 'carousel',
       contents: CATALOG_ITEMS.map(item => ({
         type: 'bubble',
-        size: 'kilo',
         hero: {
           type: 'image',
           url: item.imageUrl,
           size: 'full',
-          aspectRatio: '1:1',
+          aspectRatio: '20:13',
           aspectMode: 'cover',
           action: { type: 'message', label: 'สั่งเลย', text: item.name },
         },
         body: {
           type: 'box',
           layout: 'vertical',
-          spacing: 'xs',
-          paddingAll: '10px',
+          spacing: 'sm',
+          paddingAll: 'md',
           contents: [
             { type: 'text', text: item.name, weight: 'bold', size: 'sm', wrap: true, color: '#1a1a1a' },
             { type: 'text', text: `฿${item.price.toLocaleString()}`, size: 'lg', weight: 'bold', color: '#C0392B' },
@@ -341,11 +340,10 @@ function catalogFlex() {
         footer: {
           type: 'box',
           layout: 'vertical',
-          paddingAll: '8px',
-          paddingTop: '0px',
+          paddingAll: 'sm',
           contents: [{
             type: 'button',
-            action: { type: 'message', label: '🛒 สั่งเลย', text: item.name },
+            action: { type: 'message', label: 'สั่งเลย', text: item.name },
             style: 'primary',
             color: '#C0392B',
             height: 'sm',
