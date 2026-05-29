@@ -3,8 +3,8 @@ const { appendOrder } = require('./sheetsService');
 const {
   welcomeFlex, cartFlex, paymentFlex,
   slipReceivedFlex, orderConfirmedFlex, shippedFlex,
-  statusFlex, cancelConfirmFlex,
-  QR_START, QR_ORDERING, QR_CONFIRM, QR_CANCEL, adminQR,
+  statusFlex, cancelConfirmFlex, catalogFlex,
+  QR_START, QR_ORDERING, QR_CONFIRM, QR_CANCEL, QR_MENU, adminQR,
 } = require('./messages');
 
 const PROMPTPAY = process.env.PROMPTPAY_NUMBER || '0931726399';
@@ -232,8 +232,21 @@ async function handleMessage(event, client) {
     return;
   }
 
-  // ─── ดูเมนู ──────────────────────────────────────────────────
-  if (['เมนู', 'menu', 'สินค้า', 'ดูเมนู'].includes(lower)) {
+  // ─── แคตตาล็อกรูปสินค้า ──────────────────────────────────────
+  if (['เมนู', 'menu', 'สินค้า', 'ดูเมนู', 'แคตตาล็อก', 'catalog', 'รูปสินค้า'].includes(lower)) {
+    await send(client, event.replyToken, [
+      catalogFlex(),
+      {
+        type: 'text',
+        text: '🐷 แตะ 🛒 สั่งเลย ที่รูปสินค้าได้เลยครับ!\nหรือกด "เมนูทั้งหมด" เพื่อดูรายการแบบข้อความ',
+        quickReply: QR_MENU,
+      },
+    ]);
+    return;
+  }
+
+  // ─── เมนูแบบข้อความ (ทุกรายการ) ─────────────────────────────
+  if (['ดูเมนูทั้งหมด', 'เมนูทั้งหมด', 'รายการทั้งหมด'].includes(lower)) {
     await send(client, event.replyToken, { type: 'text', text: getMenuText(), quickReply: QR_START });
     return;
   }
@@ -389,6 +402,19 @@ async function handleMessage(event, client) {
       await send(client, event.replyToken, {
         type: 'text',
         text: '🛒 เริ่มสั่งสินค้าได้เลยครับ!\n\nพิมพ์ชื่อสินค้า เช่น:\n  หมูทุบ 500g\n  หมูสวรรค์ 350g x2\n  น้ำพริกหมูทุบ x3\n\nสั่งได้หลายรายการ กด "สั่งครบแล้ว" เมื่อเสร็จ',
+        quickReply: QR_ORDERING,
+      });
+      return;
+    }
+
+    // ─── สั่งจากแคตตาล็อก (tap 🛒 สั่งเลย ขณะ idle) ──────────
+    const catalogItem = findItem(text);
+    if (catalogItem) {
+      state.state = 'ordering';
+      state.cart = [{ ...catalogItem, qty: 1, subtotal: catalogItem.price }];
+      await send(client, event.replyToken, {
+        type: 'text',
+        text: `✅ เพิ่ม "${catalogItem.name}" ลงตะกร้าแล้วครับ!\n💰 ${catalogItem.price} บาท\n\nสั่งเพิ่มได้ หรือกด "สั่งครบแล้ว" เพื่อดำเนินการต่อ`,
         quickReply: QR_ORDERING,
       });
       return;

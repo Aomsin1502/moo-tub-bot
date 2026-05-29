@@ -1,5 +1,17 @@
 const PROMPTPAY = process.env.PROMPTPAY_NUMBER || '0931726399';
 
+// ─── แคตตาล็อกสินค้า (8 รูปทดสอบ — เพิ่ม/แก้ imageUrl ได้เลย) ────────────
+const CATALOG_ITEMS = [
+  { name: 'หมูทุบ 130g',    price: 100, imageUrl: 'https://i.ibb.co/xqp8rGv2/130.png' },
+  { name: 'หมูทุบ 500g',    price: 350, imageUrl: 'https://i.ibb.co/jkzdWNsw/500.png' },
+  { name: 'หมูแท่ง 130g',   price: 100, imageUrl: 'https://i.ibb.co/RWbcKms/130.png'  },
+  { name: 'หมูแท่ง 500g',   price: 350, imageUrl: 'https://i.ibb.co/ycRzyMQt/500.png' },
+  { name: 'หมูสวรรค์ 500g', price: 300, imageUrl: 'https://i.ibb.co/N24mBgbb/500.png' },
+  { name: 'หมูฝอย 170g',    price: 100, imageUrl: 'https://i.ibb.co/chH9wQ7Q/180.png' },
+  { name: 'หมูหยอง 140g',   price: 100, imageUrl: 'https://i.ibb.co/gZgnz5dk/150.png' },
+  { name: 'น้ำพริกหมูทุบ',  price: 50,  imageUrl: 'https://i.ibb.co/1t3cSsFk/image.png' },
+];
+
 function welcomeFlex() {
   return {
     type: 'flex',
@@ -299,6 +311,51 @@ function shippedFlex(orderId, trackingNo) {
   };
 }
 
+function catalogFlex() {
+  return {
+    type: 'flex',
+    altText: '📸 สินค้าร้านหมูทุบแม่บัวเผื่อน — แตะ 🛒 สั่งเลย ได้เลยครับ!',
+    contents: {
+      type: 'carousel',
+      contents: CATALOG_ITEMS.map(item => ({
+        type: 'bubble',
+        size: 'kilo',
+        hero: {
+          type: 'image',
+          url: item.imageUrl,
+          size: 'full',
+          aspectRatio: '1:1',
+          aspectMode: 'cover',
+          action: { type: 'message', label: 'สั่งเลย', text: item.name },
+        },
+        body: {
+          type: 'box',
+          layout: 'vertical',
+          spacing: 'xs',
+          paddingAll: '10px',
+          contents: [
+            { type: 'text', text: item.name, weight: 'bold', size: 'sm', wrap: true, color: '#1a1a1a' },
+            { type: 'text', text: `฿${item.price.toLocaleString()}`, size: 'lg', weight: 'bold', color: '#C0392B' },
+          ],
+        },
+        footer: {
+          type: 'box',
+          layout: 'vertical',
+          paddingAll: '8px',
+          paddingTop: '0px',
+          contents: [{
+            type: 'button',
+            action: { type: 'message', label: '🛒 สั่งเลย', text: item.name },
+            style: 'primary',
+            color: '#C0392B',
+            height: 'sm',
+          }],
+        },
+      })),
+    },
+  };
+}
+
 const STATUS_CONFIG = {
   'รอยืนยัน':         { color: '#E67E22', icon: '⏳', label: 'รอร้านยืนยัน',   canCancel: false },
   'กำลัง Packing':    { color: '#2980B9', icon: '📦', label: 'กำลัง Packing',  canCancel: false },
@@ -451,6 +508,11 @@ function adminQR(orderId) {
   return qr([{ label: '✅ ยืนยันออเดอร์', text: `ยืนยัน ${orderId}` }]);
 }
 
+const QR_MENU = qr([
+  { label: '🛒 สั่งสินค้า', text: 'สั่ง' },
+  { label: '📋 เมนูทั้งหมด', text: 'ดูเมนูทั้งหมด' },
+]);
+
 module.exports = {
   welcomeFlex,
   cartFlex,
@@ -460,9 +522,11 @@ module.exports = {
   shippedFlex,
   statusFlex,
   cancelConfirmFlex,
+  catalogFlex,
   QR_START,
   QR_ORDERING,
   QR_CONFIRM,
   QR_CANCEL,
+  QR_MENU,
   adminQR,
 };
