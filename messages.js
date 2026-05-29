@@ -38,7 +38,7 @@ function welcomeFlex() {
         spacing: 'md',
         contents: [
           { type: 'text', text: 'ยินดีต้อนรับครับ! 😊', weight: 'bold', size: 'lg', color: '#C0392B' },
-          { type: 'text', text: 'สินค้าทำสดใหม่ทุกวัน จัดส่งทั่วไทย\nผ่าน Kerry / Flash Express', wrap: true, size: 'sm', color: '#555555' },
+          { type: 'text', text: 'สินค้าทำสดใหม่ทุกวัน จัดส่งทั่วไทย\nผ่าน ไปรษณีไทย / EMS', wrap: true, size: 'sm', color: '#555555' },
           { type: 'separator', margin: 'md' },
           {
             type: 'box', layout: 'vertical', spacing: 'sm', margin: 'md',
@@ -133,7 +133,7 @@ function cartFlex(cart, showConfirmButtons = false) {
               { type: 'text', text: `${total} บาท`, weight: 'bold', color: '#C0392B', flex: 1, align: 'end', size: 'lg' },
             ],
           },
-          { type: 'text', text: '⚠️ ค่าส่ง Kerry/Flash คิดแยกต่างหาก', size: 'xs', color: '#888888', margin: 'sm' },
+          { type: 'text', text: '⚠️ ค่าส่งไปรษณีไทย คิดแยกต่างหาก', size: 'xs', color: '#888888', margin: 'sm' },
         ],
       },
       ...(showConfirmButtons ? {
@@ -177,7 +177,7 @@ function paymentFlex(orderId, total) {
               { type: 'text', text: `${total} บาท`, flex: 1, align: 'end', weight: 'bold', color: '#C0392B', size: 'lg' },
             ],
           },
-          { type: 'text', text: '⚠️ ค่าส่ง Kerry/Flash แจ้งแยกต่างหาก', size: 'xs', color: '#E74C3C', wrap: true },
+          { type: 'text', text: '⚠️ ค่าส่งไปรษณีไทย แจ้งแยกต่างหาก', size: 'xs', color: '#E74C3C', wrap: true },
           { type: 'separator', margin: 'md' },
           { type: 'text', text: '📱 โอนผ่าน PromptPay', weight: 'bold', margin: 'md' },
           {
@@ -366,67 +366,49 @@ const STATUS_CONFIG = {
 };
 
 function statusFlex(orderId, orderData) {
-  const { status, total, items, trackingNo } = orderData;
+  const { status, trackingNo } = orderData;
   const cfg = STATUS_CONFIG[status] || { color: '#95A5A6', icon: '❓', label: status, canCancel: false };
-
-  const itemRows = Array.isArray(items) ? items.map(i => ({
-    type: 'box', layout: 'horizontal',
-    contents: [
-      { type: 'text', text: `• ${i.name}${i.qty > 1 ? ` ×${i.qty}` : ''}`, size: 'sm', flex: 4, wrap: true, color: '#555555' },
-      { type: 'text', text: `${i.price * i.qty} ฿`, size: 'sm', flex: 1, align: 'end', color: '#333333' },
-    ],
-  })) : [];
 
   return {
     type: 'flex',
-    altText: `📦 สถานะออเดอร์ #${orderId}: ${cfg.label}`,
+    altText: `📦 ออเดอร์ #${orderId} — ${cfg.label}`,
     contents: {
       type: 'bubble',
       header: {
-        type: 'box', layout: 'vertical', backgroundColor: cfg.color, paddingAll: '16px',
+        type: 'box', layout: 'vertical', backgroundColor: cfg.color, paddingAll: '24px',
         contents: [
-          { type: 'text', text: `${cfg.icon}  ${cfg.label}`, weight: 'bold', color: '#FFFFFF', size: 'lg' },
-          { type: 'text', text: `#${orderId}`, color: '#FFFFFF', size: 'xs', margin: 'sm' },
+          { type: 'text', text: `${cfg.icon}  ${cfg.label}`, weight: 'bold', color: '#FFFFFF', size: 'xl', align: 'center' },
+          { type: 'text', text: `#${orderId}`, color: '#FFFFFF', size: 'xs', align: 'center', margin: 'sm' },
         ],
       },
       body: {
-        type: 'box', layout: 'vertical', spacing: 'sm',
-        contents: [
-          ...itemRows,
-          { type: 'separator', margin: 'md' },
+        type: 'box', layout: 'vertical', spacing: 'md', paddingAll: 'xl',
+        contents: trackingNo ? [
+          { type: 'text', text: '📮 เลขพัสดุไปรษณีไทย', size: 'sm', color: '#888888', align: 'center' },
           {
-            type: 'box', layout: 'horizontal', margin: 'md',
+            type: 'box', layout: 'vertical', backgroundColor: '#EBF5FB',
+            paddingAll: '16px', cornerRadius: '8px', margin: 'sm',
             contents: [
-              { type: 'text', text: '💰 รวม', flex: 2, color: '#555555', weight: 'bold' },
-              { type: 'text', text: `${total} บาท`, flex: 1, align: 'end', weight: 'bold', color: '#C0392B' },
+              { type: 'text', text: trackingNo, weight: 'bold', size: 'xxl', align: 'center', color: '#1A5276' },
             ],
           },
-          ...(trackingNo ? [{
-            type: 'box', layout: 'horizontal', margin: 'sm',
-            contents: [
-              { type: 'text', text: '🚚 เลขพัสดุ', flex: 2, color: '#555555', size: 'sm' },
-              { type: 'text', text: trackingNo, flex: 2, align: 'end', weight: 'bold', color: '#7D3C98', wrap: true, size: 'sm' },
-            ],
-          }] : []),
+          { type: 'text', text: 'กดปุ่มด้านล่างเพื่อติดตามพัสดุได้เลยครับ 📦', size: 'xs', color: '#888888', align: 'center', margin: 'sm', wrap: true },
+        ] : [
+          {
+            type: 'text',
+            text: '⏳ กำลังดำเนินการ\nร้านจะแจ้งเลขพัสดุ\nเมื่อจัดส่งครับ 🙏',
+            wrap: true, color: '#555555', align: 'center', size: 'md',
+          },
         ],
       },
-      ...((cfg.canCancel || trackingNo) ? {
+      ...(trackingNo ? {
         footer: {
-          type: 'box', layout: 'vertical', spacing: 'sm',
-          contents: [
-            ...(trackingNo ? [{
-              type: 'button',
-              action: { type: 'uri', label: '🚚 ติดตามพัสดุ', uri: `https://track.thailandpost.co.th/?barcode=${trackingNo}` },
-              style: 'primary',
-              color: '#7D3C98',
-            }] : []),
-            ...(cfg.canCancel ? [{
-              type: 'button',
-              action: { type: 'message', label: '❌ ยกเลิกออเดอร์', text: 'ยกเลิกออเดอร์' },
-              style: 'secondary',
-              color: '#E74C3C',
-            }] : []),
-          ],
+          type: 'box', layout: 'vertical', paddingAll: 'md',
+          contents: [{
+            type: 'button',
+            action: { type: 'uri', label: '🚚 ติดตามพัสดุไปรษณีไทย', uri: `https://track.thailandpost.co.th/?barcode=${trackingNo}` },
+            style: 'primary', color: '#C0392B',
+          }],
         },
       } : {}),
     },
@@ -490,7 +472,7 @@ const QR_START = qr([
 ]);
 
 const QR_ORDERING = qr([
-  { label: '📜 ดูเมนู', text: 'เมนู' },
+  { label: '➕ สั่งเพิ่ม', text: 'เมนู' },
   { label: '🛒 ดูตะกร้า', text: 'ตะกร้า' },
   { label: '✅ สั่งครบแล้ว', text: 'จบ' },
   { label: '❌ ยกเลิก', text: 'ยกเลิก' },

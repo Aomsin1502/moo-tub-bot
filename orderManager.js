@@ -22,13 +22,13 @@ const userLastOrder = {};
 
 function getState(userId) {
   if (!userStates[userId]) {
-    userStates[userId] = { state: 'idle', cart: [], orderId: null, displayName: '', address: '', cancelPending: null, pendingItem: null, prevState: null };
+    userStates[userId] = { state: 'idle', cart: [], orderId: null, displayName: '', address: '', name: '', addressLine: '', phone: '', cancelPending: null, pendingItem: null, prevState: null };
   }
   return userStates[userId];
 }
 
 function resetState(userId) {
-  userStates[userId] = { state: 'idle', cart: [], orderId: null, displayName: '', address: '', cancelPending: null, pendingItem: null, prevState: null };
+  userStates[userId] = { state: 'idle', cart: [], orderId: null, displayName: '', address: '', name: '', addressLine: '', phone: '', cancelPending: null, pendingItem: null, prevState: null };
 }
 
 function generateOrderId() {
@@ -404,11 +404,15 @@ async function handleMessage(event, client) {
     if (['สั่ง', 'order', 'ออเดอร์', 'สั่งซื้อ'].includes(lower)) {
       state.state = 'ordering';
       state.cart = [];
-      await send(client, event.replyToken, {
-        type: 'text',
-        text: '🛒 เริ่มสั่งสินค้าได้เลยครับ!\n\nพิมพ์ชื่อสินค้า เช่น:\n  หมูทุบ 500g\n  หมูสวรรค์ 350g x2\n  น้ำพริกหมูทุบ x3\n\nสั่งได้หลายรายการ กด "สั่งครบแล้ว" เมื่อเสร็จ',
-        quickReply: QR_ORDERING,
-      });
+      try {
+        await send(client, event.replyToken, [
+          catalogFlex(),
+          { type: 'text', text: '🛒 แตะ สั่งเลย ที่สินค้าที่ต้องการครับ!', quickReply: QR_ORDERING },
+        ]);
+      } catch (err) {
+        console.error('catalogFlex error:', err.message);
+        await send(client, event.replyToken, { type: 'text', text: getMenuText(), quickReply: QR_ORDERING });
+      }
       return;
     }
 
@@ -513,11 +517,22 @@ async function handleMessage(event, client) {
       state.pendingItem = null;
       state.prevState = null;
       const total = state.cart.reduce((sum, i) => sum + i.price * i.qty, 0);
-      await send(client, event.replyToken, {
-        type: 'text',
-        text: `✅ เพิ่ม "${item.name}" x${num} แล้วครับ!\n💰 ${parsed.subtotal} บาท\n\n🛒 ตะกร้า ${state.cart.length} รายการ รวม ${total} บาท\nสั่งเพิ่มได้ หรือกด "สั่งครบแล้ว"`,
-        quickReply: QR_ORDERING,
-      });
+      try {
+        await send(client, event.replyToken, [
+          catalogFlex(),
+          {
+            type: 'text',
+            text: `✅ เพิ่ม "${item.name}" x${num} แล้วครับ!\n🛒 ตะกร้า ${state.cart.length} รายการ รวม ${total} บาท\n\nสั่งเพิ่มหรือกด "สั่งครบแล้ว"`,
+            quickReply: QR_ORDERING,
+          },
+        ]);
+      } catch (err) {
+        await send(client, event.replyToken, {
+          type: 'text',
+          text: `✅ เพิ่ม "${item.name}" x${num} แล้วครับ!\n🛒 ตะกร้า ${state.cart.length} รายการ รวม ${total} บาท`,
+          quickReply: QR_ORDERING,
+        });
+      }
     } else {
       await send(client, event.replyToken, {
         type: 'text',
@@ -530,10 +545,10 @@ async function handleMessage(event, client) {
 
   if (state.state === 'confirming') {
     if (['ยืนยัน', 'confirm', 'ok', 'โอเค', 'ตกลง'].includes(lower)) {
-      state.state = 'waiting_address';
+      state.state = 'waiting_name';
       await send(client, event.replyToken, {
         type: 'text',
-        text: '📦 กรุณาพิมพ์ที่อยู่จัดส่งครับ\n\nตัวอย่าง:\nชื่อ-สกุล: แม่มะลิ ใจดี\nที่อยู่: 123 ม.4 ต.บ้านใหม่ อ.เมือง จ.ชุมพร 86000\nโทร: 0812345678',
+        text: '👤 กรุณาพิมพ์ชื่อ-สกุล ผู้รับสินค้า',
         quickReply: QR_CANCEL,
       });
       return;
@@ -546,8 +561,31 @@ async function handleMessage(event, client) {
     return;
   }
 
-  if (state.state === 'waiting_address') {
-    state.address = text;
+  if (state.state === 'waiting_name') {
+    state.name = text;
+    state.state = 'waiting_address_line';
+    await send(client, event.replyToken, {
+      type: 'text',
+      text: '📍 กรุณาพิมพ์ที่อยู่จัดส่ง\n\nเช่น: 123 ม.4 ต.บ้านใหม่\nอ.เมือง จ.ชุมพร 86000',
+      quickReply: QR_CANCEL,
+    });
+    return;
+  }
+
+  if (state.state === 'waiting_address_line') {
+    state.addressLine = text;
+    state.state = 'waiting_phone';
+    await send(client, event.replyToken, {
+      type: 'text',
+      text: '📱 กรุณาพิมพ์เบอร์โทรศัพท์',
+      quickReply: QR_CANCEL,
+    });
+    return;
+  }
+
+  if (state.state === 'waiting_phone') {
+    state.phone = text;
+    state.address = `${state.name} | ${state.addressLine} | โทร: ${state.phone}`;
     state.orderId = generateOrderId();
     state.state = 'waiting_slip';
     const total = state.cart.reduce((sum, i) => sum + i.price * i.qty, 0);
