@@ -80,9 +80,23 @@ function cartFlex(cart, showConfirmButtons = false) {
     return {
       type: 'box',
       layout: 'horizontal',
+      paddingTop: 'sm',
+      paddingBottom: 'sm',
       contents: [
-        { type: 'text', text: `${item.name}${item.qty > 1 ? ` ×${item.qty}` : ''}`, size: 'sm', flex: 4, wrap: true, color: '#333333' },
-        { type: 'text', text: `${sub} ฿`, size: 'sm', flex: 1, align: 'end', color: '#C0392B', weight: 'bold' },
+        {
+          type: 'box', layout: 'vertical', flex: 5, justifyContent: 'center',
+          contents: [
+            { type: 'text', text: item.name, size: 'sm', wrap: true, color: '#333333', weight: 'bold' },
+            { type: 'text', text: `×${item.qty}   ${sub} ฿`, size: 'xs', color: '#C0392B', margin: 'xs' },
+          ],
+        },
+        {
+          type: 'box', layout: 'vertical', flex: 1, justifyContent: 'center', alignItems: 'center',
+          action: { type: 'message', label: 'ลบ', text: `ลบ ${item.name}` },
+          contents: [
+            { type: 'text', text: '✕', size: 'sm', align: 'center', color: '#E74C3C', weight: 'bold' },
+          ],
+        },
       ],
     };
   });

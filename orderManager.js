@@ -438,6 +438,35 @@ async function handleMessage(event, client) {
     return;
   }
 
+  if (state.state === 'ordering' || state.state === 'confirming') {
+    if (lower.startsWith('ลบ ')) {
+      const itemName = text.slice(3).trim();
+      const idx = state.cart.findIndex(i => i.name.toLowerCase() === itemName.toLowerCase());
+      if (idx !== -1) {
+        const removed = state.cart[idx];
+        state.cart.splice(idx, 1);
+        state.state = 'ordering';
+        if (state.cart.length === 0) {
+          try {
+            await send(client, event.replyToken, [
+              catalogFlex(),
+              { type: 'text', text: `🗑 ลบ "${removed.name}" แล้วครับ\n\n🛒 ตะกร้าว่างแล้ว — เลือกสินค้าได้เลย!`, quickReply: QR_ORDERING },
+            ]);
+          } catch (_) {
+            await send(client, event.replyToken, { type: 'text', text: `🗑 ลบ "${removed.name}" แล้วครับ\nตะกร้าว่างแล้ว`, quickReply: QR_ORDERING });
+          }
+        } else {
+          await send(client, event.replyToken, { ...cartFlex(state.cart, false), quickReply: QR_ORDERING });
+        }
+      } else {
+        await send(client, event.replyToken, {
+          type: 'text', text: `⚠️ ไม่พบ "${itemName}" ในตะกร้าครับ`, quickReply: QR_ORDERING,
+        });
+      }
+      return;
+    }
+  }
+
   if (state.state === 'ordering') {
     if (['ตะกร้า', 'cart', 'ดูตะกร้า'].includes(lower)) {
       if (state.cart.length === 0) {
