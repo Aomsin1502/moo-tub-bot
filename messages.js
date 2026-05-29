@@ -1,21 +1,17 @@
 const PROMPTPAY = process.env.PROMPTPAY_NUMBER || '0931726399';
 
 // ─── แคตตาล็อกสินค้า ────────────────────────────────────────────────────────
-// TEST: ใช้รูป LINE CDN เพื่อยืนยัน Flex structure — ถ้าขึ้นรูปให้เปลี่ยน imageUrl เป็นรูปจริง
-const _TEST_IMG = [
-  'https://developers-resource.landpress.line.me/fx/img/01_1_cafe.png',
-  'https://developers-resource.landpress.line.me/fx/img/01_2_news.png',
-  'https://developers-resource.landpress.line.me/fx/img/01_5_restaurant.png',
-];
+// รูปอยู่ที่ /public/images/ — serve ผ่าน https://moo-tub-bot.onrender.com/images/
+const IMG = 'https://moo-tub-bot.onrender.com/images';
 const CATALOG_ITEMS = [
-  { name: 'หมูทุบ 130g',    price: 100, imageUrl: _TEST_IMG[0] },
-  { name: 'หมูทุบ 500g',    price: 350, imageUrl: _TEST_IMG[1] },
-  { name: 'หมูแท่ง 130g',   price: 100, imageUrl: _TEST_IMG[2] },
-  { name: 'หมูแท่ง 500g',   price: 350, imageUrl: _TEST_IMG[0] },
-  { name: 'หมูสวรรค์ 500g', price: 300, imageUrl: _TEST_IMG[1] },
-  { name: 'หมูฝอย 170g',    price: 100, imageUrl: _TEST_IMG[2] },
-  { name: 'หมูหยอง 140g',   price: 100, imageUrl: _TEST_IMG[0] },
-  { name: 'น้ำพริกหมูทุบ',  price: 50,  imageUrl: _TEST_IMG[1] },
+  { name: 'หมูทุบ 130g',    price: 100, imageUrl: `${IMG}/moo-tub-130g.jpg`    },
+  { name: 'หมูทุบ 500g',    price: 350, imageUrl: `${IMG}/moo-tub-500g.jpg`    },
+  { name: 'หมูแท่ง 130g',   price: 100, imageUrl: `${IMG}/moo-tang-130g.jpg`   },
+  { name: 'หมูแท่ง 500g',   price: 350, imageUrl: `${IMG}/moo-tang-500g.jpg`   },
+  { name: 'หมูสวรรค์ 500g', price: 300, imageUrl: `${IMG}/moo-sawan-500g.jpg`  },
+  { name: 'หมูฝอย 170g',    price: 100, imageUrl: `${IMG}/moo-foi-170g.jpg`    },
+  { name: 'หมูหยอง 140g',   price: 100, imageUrl: `${IMG}/moo-yong-140g.jpg`   },
+  { name: 'น้ำพริกหมูทุบ',  price: 50,  imageUrl: `${IMG}/namprik-mootub.jpg`  },
 ];
 
 function welcomeFlex() {

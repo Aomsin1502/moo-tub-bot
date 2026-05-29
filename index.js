@@ -14,6 +14,9 @@ const client = new line.messagingApi.MessagingApiClient({
 
 const app = express();
 
+// Serve product images from /public/images/
+app.use('/images', express.static(require('path').join(__dirname, 'public', 'images')));
+
 app.post('/webhook', line.middleware(lineConfig), async (req, res) => {
   res.json({ status: 'ok' });
   for (const event of req.body.events) {

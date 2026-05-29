@@ -232,39 +232,6 @@ async function handleMessage(event, client) {
     return;
   }
 
-  // ─── ทดสอบ Flex (diagnostic) ─────────────────────────────────
-  if (lower === 'testflex') {
-    console.log('🔬 testflex triggered by', userId);
-    try {
-      await send(client, event.replyToken, {
-        type: 'flex',
-        altText: 'TEST FLEX',
-        contents: {
-          type: 'bubble',
-          body: {
-            type: 'box',
-            layout: 'vertical',
-            contents: [
-              { type: 'text', text: 'Flex ทำงานได้!', weight: 'bold', size: 'xl', color: '#27AE60' },
-              {
-                type: 'image',
-                url: 'https://developers-resource.landpress.line.me/fx/img/01_1_cafe.png',
-                size: 'full',
-                aspectRatio: '20:13',
-                aspectMode: 'cover',
-              },
-            ],
-          },
-        },
-      });
-      console.log('✅ testflex sent OK');
-    } catch (err) {
-      console.error('❌ testflex error:', JSON.stringify(err.response?.data || err.message));
-      await send(client, event.replyToken, { type: 'text', text: `❌ Flex error: ${JSON.stringify(err.response?.data || err.message)}` });
-    }
-    return;
-  }
-
   // ─── แคตตาล็อกรูปสินค้า ──────────────────────────────────────
   if (['เมนู', 'menu', 'สินค้า', 'ดูเมนู', 'แคตตาล็อก', 'catalog', 'รูปสินค้า'].includes(lower)) {
     try {
