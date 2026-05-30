@@ -190,7 +190,7 @@ async function handleMessage(event, client) {
         }
 
         // ดึง orders "รอส่ง" จาก Sheets (ไม่หายถ้า restart)
-        const sheetPackingOrders = await getOrdersByStatus('รอส่ง');
+        const sheetPackingOrders = await getOrdersByStatuses(['รอส่ง']);
         const pendingOrders = sheetPackingOrders
           .sort((a, b) => a.orderId.localeCompare(b.orderId))
           .map(o => ({ orderId: o.orderId, userId: o.userId, displayName: o.displayName, address: o.address, total: o.total }));
@@ -310,7 +310,8 @@ async function handleMessage(event, client) {
     // ─── รอแพค — รายการที่รอแพคสินค้า ───────────────────────────
     if (['รอแพค', 'packing'].includes(lower)) {
       await send(client, event.replyToken, { type: 'text', text: '⏳ กำลังดึงข้อมูลจาก Sheets...' });
-      getOrdersByStatus('รอแพค').then(async orders => {
+      // อ่านทั้ง "รอแพค" และ "กำลัง Packing" (ข้อมูลเก่า backward compat)
+      getOrdersByStatuses(['รอแพค', 'กำลัง Packing']).then(async orders => {
         if (!orders.length) return client.pushMessage({ to: userId, messages: [{ type: 'text', text: '✅ ไม่มีออเดอร์รอแพคครับ' }] });
         for (const o of orders.slice(0, 10)) {
           await client.pushMessage({ to: userId, messages: [{
@@ -542,22 +543,21 @@ async function handleMessage(event, client) {
 
     if (confirmMatch) {
       const orderId = confirmMatch[1].toUpperCase();
+      // อัปเดต Sheets โดยตรง — ไม่ต้องง้อ in-memory (ทำงานแม้ server restart)
+      updateOrderStatus(orderId, 'รอแพค').catch(e => console.error('Sheets confirm error:', e.message));
+      // อัปเดต memory ถ้ามี
       const order = orderStatus[orderId];
-      if (order && order.status === 'รอยืนยัน') {
-        order.status = 'รอแพค';
-        updateOrderStatus(orderId, 'รอแพค').catch(e => console.error('Sheets confirm error:', e.message));
-        try {
-          await client.pushMessage({ to: order.userId, messages: [orderConfirmedFlex(orderId)] });
-        } catch (err) { console.error('Push customer error:', err.message); }
-        await send(client, event.replyToken, {
-          type: 'text',
-          text: `✅ ยืนยัน #${orderId}\nสถานะ → รอแพค\nแจ้งลูกค้า "${order.displayName}" แล้วครับ`,
-        });
-      } else if (order) {
-        await send(client, event.replyToken, { type: 'text', text: `⚠️ #${orderId} สถานะปัจจุบัน: ${order.status}` });
-      } else {
-        await send(client, event.replyToken, { type: 'text', text: `❌ ไม่พบออเดอร์ #${orderId}` });
+      if (order) { order.status = 'รอแพค'; }
+      // push ลูกค้า (ถ้ามี userId)
+      const custId = order?.userId;
+      if (custId) {
+        try { await client.pushMessage({ to: custId, messages: [orderConfirmedFlex(orderId)] }); }
+        catch (err) { console.error('Push customer error:', err.message); }
       }
+      await send(client, event.replyToken, {
+        type: 'text',
+        text: `✅ ยืนยัน #${orderId}\nสถานะ → รอแพค\nอัปเดต Sheets แล้วครับ`,
+      });
       return;
     }
 
