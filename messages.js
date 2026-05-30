@@ -706,19 +706,27 @@ function pendingShipmentFlex(orders) {
 
   const rows = [];
   orders.forEach((o, i) => {
-    if (i > 0) rows.push({ type: 'separator', margin: 'sm' });
+    if (i > 0) rows.push({ type: 'separator', margin: 'md' });
+    const addrLines = (o.address || '').split(/\n|โทร:|Tel:|เบอร์:/).map(s => s.trim()).filter(Boolean);
+    const addrText  = addrLines[0] || '';
+    const phoneText = addrLines.find(s => /^0\d{8,9}$/.test(s.replace(/\D/g,''))) || '';
+
     rows.push({
-      type: 'box', layout: 'vertical', paddingTop: 'sm', paddingBottom: 'sm',
+      type: 'box', layout: 'vertical', paddingTop: 'sm', paddingBottom: 'sm', spacing: 'xs',
       contents: [
+        // หัว: ลำดับ + ชื่อ + ยอด
         {
           type: 'box', layout: 'horizontal',
           contents: [
-            { type: 'text', text: `${i + 1}.`, flex: 0, size: 'md', weight: 'bold', color: '#7D3C98' },
-            { type: 'text', text: o.displayName, flex: 1, size: 'md', weight: 'bold', color: '#1a1a1a', margin: 'sm' },
-            { type: 'text', text: `${o.total}฿`, flex: 0, size: 'sm', color: '#C0392B', weight: 'bold' },
+            { type: 'text', text: `${i + 1}.`, flex: 0, size: 'sm', weight: 'bold', color: '#7D3C98' },
+            { type: 'text', text: o.displayName, flex: 1, size: 'sm', weight: 'bold', color: '#1a1a1a', margin: 'sm' },
+            { type: 'text', text: `${o.total}฿`, flex: 0, size: 'xs', color: '#C0392B', weight: 'bold', gravity: 'center' },
           ],
         },
-        { type: 'text', text: `    ${o.orderId}`, size: 'xs', color: '#888888', margin: 'xs' },
+        // ที่อยู่
+        { type: 'text', text: `📦 ${o.address || '-'}`, size: 'xs', color: '#555555', margin: 'xs', wrap: true },
+        // Order ID
+        { type: 'text', text: o.orderId, size: 'xs', color: '#AAAAAA', margin: 'xs' },
       ],
     });
   });

@@ -264,7 +264,7 @@ async function handleMessage(event, client) {
       const pending = Object.entries(orderStatus)
         .filter(([, o]) => o.status === 'กำลัง Packing')
         .sort(([a], [b]) => a.localeCompare(b))
-        .map(([orderId, o]) => ({ orderId, displayName: o.displayName, total: o.total, userId: o.userId }));
+        .map(([orderId, o]) => ({ orderId, displayName: o.displayName, total: o.total, userId: o.userId, address: o.address || '' }));
 
       if (pending.length === 0) {
         await send(client, event.replyToken, { type: 'text', text: '✅ ไม่มีออเดอร์รอจัดส่งครับ' });
