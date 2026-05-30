@@ -217,7 +217,7 @@ input,textarea,select{font-family:inherit;font-size:16px}
     <div style="font-size:22px;font-weight:700;color:#27AE60">ส่งออเดอร์เรียบร้อย!</div>
     <div class="done-id" id="doneOrderId"></div>
     <div style="font-size:14px;color:#555;line-height:1.8">ร้านจะยืนยันออเดอร์<br>ภายใน 30 นาทีครับ 🙏<br><br>กรุณาติดตามสถานะผ่าน LINE</div>
-    <button onclick="liff.closeWindow()" style="background:#C0392B;color:#fff;border:none;border-radius:12px;padding:14px 32px;font-size:16px;font-weight:700;cursor:pointer;margin-top:8px">ปิดหน้าต่างนี้</button>
+    <button onclick="closeShop()" style="background:#C0392B;color:#fff;border:none;border-radius:12px;padding:14px 32px;font-size:16px;font-weight:700;cursor:pointer;margin-top:8px">ปิดหน้าต่างนี้</button>
   </div>
 </div>
 
@@ -508,6 +508,13 @@ async function init(){
     document.getElementById('initLoad').innerHTML=`<p style="color:#E74C3C;padding:24px;text-align:center">เกิดข้อผิดพลาด<br>${e.message}</p>`;
   }
 }
+function closeShop(){
+  try{
+    if(liff.isInClient()){liff.closeWindow();}
+    else{window.close();setTimeout(()=>{location.href='https://line.me/R/ti/p/@869dnkxz';},300);}
+  }catch(e){window.close();}
+}
+
 init();
 </script>
 </body>
