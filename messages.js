@@ -885,12 +885,19 @@ function adminTrackingReviewFlex(pairs, unpairedTrackings, unpairedOrders, track
     });
     unpairedOrders.forEach((o, i) => {
       const letter = String.fromCharCode(65 + pairs.length + i);
+      const addrShort = (o.address || '').slice(0, 40);
       bodyContents.push({
-        type: 'box', layout: 'horizontal', paddingTop: 'xs',
+        type: 'box', layout: 'vertical', paddingTop: 'sm', paddingBottom: 'xs',
         contents: [
-          { type: 'text', text: `${letter}.`, flex: 0, size: 'xs', color: '#E67E22', weight: 'bold' },
-          { type: 'text', text: o.displayName, flex: 3, size: 'xs', color: '#E67E22', margin: 'sm' },
-          { type: 'text', text: o.orderId.slice(-6), flex: 2, size: 'xs', color: '#AAAAAA', align: 'end' },
+          {
+            type: 'box', layout: 'horizontal',
+            contents: [
+              { type: 'text', text: `${letter}.`, flex: 0, size: 'sm', color: '#E67E22', weight: 'bold' },
+              { type: 'text', text: o.displayName, flex: 3, size: 'sm', color: '#E67E22', weight: 'bold', margin: 'sm' },
+              { type: 'text', text: o.orderId.slice(-6), flex: 2, size: 'xs', color: '#AAAAAA', align: 'end', gravity: 'center' },
+            ],
+          },
+          { type: 'text', text: addrShort || '-', size: 'xs', color: '#888888', margin: 'xs', wrap: true },
         ],
       });
     });
