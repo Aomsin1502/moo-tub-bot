@@ -25,6 +25,10 @@ const userLastOrder = {};
 // adminUserId → [{orderId, trackingNo, userId, displayName}]
 const adminPendingMatches = {};
 
+// queue สำหรับกรอก tracking ทีละรายการ
+// adminUserId → { orders: [...], index: 0, results: [...] }
+const adminTrackingQueue = {};
+
 function getState(userId) {
   if (!userStates[userId]) {
     userStates[userId] = { state: 'idle', cart: [], orderId: null, displayName: '', address: '', name: '', addressLine: '', phone: '', cancelPending: null, pendingItem: null, pendingQty: 1, prevState: null };
@@ -236,13 +240,75 @@ async function handleMessage(event, client) {
   // ─── Admin commands ────────────────────────────────────────
   if (ADMIN_USER_ID && userId === ADMIN_USER_ID) {
 
-    // รายการรอจัดส่ง (กำลัง Packing)
+    // รายการรอจัดส่ง → เริ่ม sequential tracking entry
     if (['รายการส่ง', 'รายการจัดส่ง', 'ค้างส่ง'].includes(lower)) {
       const pending = Object.entries(orderStatus)
         .filter(([, o]) => o.status === 'กำลัง Packing')
         .sort(([a], [b]) => a.localeCompare(b))
-        .map(([orderId, o]) => ({ orderId, displayName: o.displayName, total: o.total }));
-      await send(client, event.replyToken, pendingShipmentFlex(pending));
+        .map(([orderId, o]) => ({ orderId, displayName: o.displayName, total: o.total, userId: o.userId }));
+
+      if (pending.length === 0) {
+        await send(client, event.replyToken, { type: 'text', text: '✅ ไม่มีออเดอร์รอจัดส่งครับ' });
+        return;
+      }
+
+      adminTrackingQueue[userId] = { orders: pending, index: 0, results: [] };
+      const first = pending[0];
+      await send(client, event.replyToken, [
+        pendingShipmentFlex(pending),
+        { type: 'text', text: `กรอก tracking ทีละรายการครับ 👇\n\n📦 1/${pending.length} — ${first.displayName}\nพิมพ์เลข tracking:` },
+      ]);
+      return;
+    }
+
+    // กำลังกรอก tracking queue ทีละรายการ
+    const queue = adminTrackingQueue[userId];
+    if (queue && queue.index < queue.orders.length) {
+      const cur = queue.orders[queue.index];
+      const total = queue.orders.length;
+
+      if (['ยกเลิก', 'cancel'].includes(lower)) {
+        delete adminTrackingQueue[userId];
+        await send(client, event.replyToken, { type: 'text', text: '❌ ยกเลิกการกรอก tracking แล้วครับ' });
+        return;
+      }
+
+      if (['ข้าม', 'skip', '-'].includes(lower)) {
+        queue.index++;
+        if (queue.index >= total) {
+          adminPendingMatches[userId] = queue.results;
+          delete adminTrackingQueue[userId];
+          await send(client, event.replyToken, adminTrackingReviewFlex(queue.results, [], []));
+        } else {
+          const next = queue.orders[queue.index];
+          await send(client, event.replyToken, { type: 'text', text: `⏭ ข้าม ${cur.displayName}\n\n📦 ${queue.index + 1}/${total} — ${next.displayName}\nพิมพ์เลข tracking:` });
+        }
+        return;
+      }
+
+      const trackingInput = text.trim().replace(/\s+/g, '').toUpperCase();
+      if (!/^[A-Z]{2}\d{8,11}[A-Z]{2}$/.test(trackingInput)) {
+        await send(client, event.replyToken, {
+          type: 'text',
+          text: `⚠️ รูปแบบไม่ถูกต้องครับ\nเช่น: EF123456789TH\n\n📦 ${queue.index + 1}/${total} — ${cur.displayName}\nพิมพ์เลข tracking:`,
+        });
+        return;
+      }
+
+      queue.results.push({ orderId: cur.orderId, trackingNo: trackingInput, userId: cur.userId, displayName: cur.displayName });
+      queue.index++;
+
+      if (queue.index >= total) {
+        adminPendingMatches[userId] = queue.results;
+        delete adminTrackingQueue[userId];
+        await send(client, event.replyToken, adminTrackingReviewFlex(queue.results, [], []));
+      } else {
+        const next = queue.orders[queue.index];
+        await send(client, event.replyToken, {
+          type: 'text',
+          text: `✅ ${trackingInput} → ${cur.displayName}\n\n📦 ${queue.index + 1}/${total} — ${next.displayName}\nพิมพ์เลข tracking:`,
+        });
+      }
       return;
     }
 
