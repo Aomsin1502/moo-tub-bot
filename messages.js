@@ -875,34 +875,53 @@ function adminTrackingReviewFlex(pairs, unpairedTrackings, unpairedOrders, track
     });
   }
 
+  // ออเดอร์ที่ยังไม่มี tracking — แสดงชัดเจน
   if (unpairedOrders.length > 0) {
-    bodyContents.push({ type: 'separator', margin: 'sm' });
-    bodyContents.push({ type: 'text', text: '⚠️ ออเดอร์ไม่มี tracking:', size: 'xs', color: '#E67E22' });
-    unpairedOrders.forEach(o => {
-      bodyContents.push({ type: 'text', text: `${o.displayName}`, size: 'xs', color: '#E67E22' });
+    bodyContents.push({ type: 'separator', margin: 'md' });
+    bodyContents.push({
+      type: 'text',
+      text: `⏳ รอ tracking อีก ${unpairedOrders.length} ออเดอร์:`,
+      size: 'xs', weight: 'bold', color: '#E67E22', margin: 'sm',
+    });
+    unpairedOrders.forEach((o, i) => {
+      const letter = String.fromCharCode(65 + pairs.length + i);
+      bodyContents.push({
+        type: 'box', layout: 'horizontal', paddingTop: 'xs',
+        contents: [
+          { type: 'text', text: `${letter}.`, flex: 0, size: 'xs', color: '#E67E22', weight: 'bold' },
+          { type: 'text', text: o.displayName, flex: 3, size: 'xs', color: '#E67E22', margin: 'sm' },
+          { type: 'text', text: o.orderId.slice(-6), flex: 2, size: 'xs', color: '#AAAAAA', align: 'end' },
+        ],
+      });
     });
   }
 
   // คำแนะนำเรียงลำดับใหม่
-  if (trackingList.length > 1 && pairs.length > 0) {
+  if (trackingList.length > 0 && pairs.length > 0) {
     bodyContents.push({ type: 'separator', margin: 'md' });
     bodyContents.push({
       type: 'text',
-      text: `ลำดับผิด? พิมพ์เลขใหม่ เช่น: 2 1 3\n(tracking ที่ไหนไปออเดอร์ A B C)`,
+      text: `ลำดับผิด? พิมพ์เลขใหม่ เช่น: 2 1 3`,
       size: 'xs', color: '#888888', wrap: true, margin: 'sm',
     });
   }
 
+  const totalPacking = pairs.length + unpairedOrders.length;
+
   return {
     type: 'flex',
-    altText: `📋 ทบทวน ${pairs.length} รายการ — รอยืนยัน`,
+    altText: `📋 ทบทวน tracking — จับคู่ได้ ${pairs.length}/${totalPacking} ออเดอร์`,
     contents: {
       type: 'bubble',
       header: {
         type: 'box', layout: 'vertical', backgroundColor: '#7D3C98', paddingAll: '16px',
         contents: [
           { type: 'text', text: '📋 ทบทวนก่อนยืนยัน', weight: 'bold', color: '#FFFFFF', size: 'lg' },
-          { type: 'text', text: `${pairs.length} รายการ`, color: '#D7BDE2', size: 'xs' },
+          {
+            type: 'text',
+            text: `จับคู่ได้ ${pairs.length} / ${totalPacking} ออเดอร์`,
+            color: '#D7BDE2', size: 'xs',
+          },
         ],
       },
       body: {

@@ -381,12 +381,16 @@ async function handleMessage(event, client) {
       }
       let successCount = 0;
       for (const match of matches) {
-        const order = orderStatus[match.orderId];
-        if (order) {
-          order.status = 'จัดส่งแล้ว';
-          order.trackingNo = match.trackingNo;
-          updateOrderStatus(match.orderId, 'จัดส่งแล้ว', match.trackingNo)
-            .catch(e => console.error('Sheets ship error:', e.message));
+        // อัปเดต Sheets โดยตรง — ไม่ต้องง้อ in-memory orderStatus
+        updateOrderStatus(match.orderId, 'จัดส่งแล้ว', match.trackingNo)
+          .catch(e => console.error('Sheets ship error:', e.message));
+        // อัปเดต memory ถ้ามี
+        if (orderStatus[match.orderId]) {
+          orderStatus[match.orderId].status = 'จัดส่งแล้ว';
+          orderStatus[match.orderId].trackingNo = match.trackingNo;
+        }
+        // push ลูกค้า
+        if (match.userId) {
           try {
             await client.pushMessage({ to: match.userId, messages: [shippedFlex(match.orderId, match.trackingNo)] });
             successCount++;
@@ -394,6 +398,7 @@ async function handleMessage(event, client) {
         }
       }
       delete adminPendingMatches[userId];
+      delete adminPendingData[userId];
       await send(client, event.replyToken, {
         type: 'text',
         text: `✅ แจ้งลูกค้าแล้ว ${successCount} คน\n📋 อัปเดต Sheets เรียบร้อยครับ`,
