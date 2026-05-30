@@ -1,10 +1,10 @@
 const { MENU, FLAT_ITEMS } = require('./menu');
-const { appendOrder, updateOrderStatus, getPackingOrders, getOrdersByStatus } = require('./sheetsService');
+const { appendOrder, updateOrderStatus, getPackingOrders, getOrdersByStatus, getOrdersByStatuses } = require('./sheetsService');
 const { extractTrackingNumbers } = require('./visionService');
 const {
   welcomeFlex, cartFlex, paymentFlex,
   slipReceivedFlex, orderConfirmedFlex, shippedFlex,
-  menuFlex, statusFlex, cancelConfirmFlex, catalogFlex, qtyPickerFlex, adminOrderFlex, adminTrackingReviewFlex, pendingShipmentFlex, packingListFlex,
+  menuFlex, statusFlex, cancelConfirmFlex, catalogFlex, qtyPickerFlex, adminOrderFlex, adminTrackingReviewFlex, pendingShipmentFlex, packingListFlex, pendingOrdersOverviewFlex,
   QR_START, QR_ORDERING, QR_CONFIRM, QR_CANCEL, QR_MENU, adminQR,
 } = require('./messages');
 
@@ -287,6 +287,17 @@ async function handleMessage(event, client) {
   if (ADMIN_USER_ID && userId === ADMIN_USER_ID) {
 
     // ล้างประวัติทั้งหมด (สำหรับทดสอบ)
+    // ออเดอร์รอดำเนินการทั้งหมด (รอยืนยัน + กำลัง Packing + รอส่ง)
+    if (['ออเดอร์', 'orders', 'listorder', 'รายการออเดอร์', 'ดูออเดอร์'].includes(lower)) {
+      await send(client, event.replyToken, { type: 'text', text: '⏳ กำลังดึงข้อมูล...' });
+      getOrdersByStatuses(['รอยืนยัน', 'กำลัง Packing', 'รอส่ง']).then(orders => {
+        return client.pushMessage({ to: userId, messages: [pendingOrdersOverviewFlex(orders)] });
+      }).catch(err => {
+        client.pushMessage({ to: userId, messages: [{ type: 'text', text: `❌ error: ${err.message}` }] });
+      });
+      return;
+    }
+
     // พร้อมส่ง ORD... → เปลี่ยนสถานะ "รอส่ง"
     const readyMatch = text.match(/^พร้อมส่ง\s+(ORD\S+)/i);
     if (readyMatch) {

@@ -686,6 +686,72 @@ function adminOrderFlex(orderId, cart, total, address, displayName) {
   };
 }
 
+function pendingOrdersOverviewFlex(orders) {
+  if (orders.length === 0) {
+    return {
+      type: 'flex', altText: '✅ ไม่มีออเดอร์รอดำเนินการ',
+      contents: {
+        type: 'bubble',
+        header: { type: 'box', layout: 'vertical', backgroundColor: '#27AE60', paddingAll: '16px',
+          contents: [{ type: 'text', text: '📋 ออเดอร์รอดำเนินการ', weight: 'bold', color: '#fff', size: 'lg' }] },
+        body: { type: 'box', layout: 'vertical', paddingAll: 'xl',
+          contents: [{ type: 'text', text: '✅ ไม่มีออเดอร์รอดำเนินการครับ', align: 'center', color: '#888' }] },
+      },
+    };
+  }
+
+  const GROUPS = [
+    { status: 'รอยืนยัน',       icon: '⏳', color: '#E67E22' },
+    { status: 'กำลัง Packing',  icon: '📦', color: '#2980B9' },
+    { status: 'รอส่ง',          icon: '📫', color: '#1A5276' },
+  ];
+
+  const byStatus = {};
+  orders.forEach(o => {
+    if (!byStatus[o.status]) byStatus[o.status] = [];
+    byStatus[o.status].push(o);
+  });
+
+  const bodyContents = [];
+  GROUPS.forEach(g => {
+    const list = byStatus[g.status] || [];
+    if (!list.length) return;
+    bodyContents.push({
+      type: 'box', layout: 'horizontal', margin: 'md',
+      contents: [
+        { type: 'text', text: `${g.icon} ${g.status}`, size: 'sm', weight: 'bold', color: g.color, flex: 3 },
+        { type: 'text', text: `${list.length} รายการ`, size: 'xs', color: '#888', flex: 1, align: 'end', gravity: 'center' },
+      ],
+    });
+    list.forEach(o => {
+      bodyContents.push({
+        type: 'box', layout: 'horizontal', paddingTop: 'xs', paddingBottom: 'xs', paddingStart: 'md',
+        contents: [
+          { type: 'text', text: o.displayName, flex: 3, size: 'xs', color: '#333', wrap: true },
+          { type: 'text', text: `${o.total}฿`, flex: 1, size: 'xs', align: 'end', color: '#C0392B', weight: 'bold' },
+        ],
+      });
+    });
+    bodyContents.push({ type: 'separator', margin: 'sm' });
+  });
+
+  return {
+    type: 'flex',
+    altText: `📋 ออเดอร์รอดำเนินการ ${orders.length} รายการ`,
+    contents: {
+      type: 'bubble', size: 'mega',
+      header: {
+        type: 'box', layout: 'vertical', backgroundColor: '#C0392B', paddingAll: '16px',
+        contents: [
+          { type: 'text', text: '📋 ออเดอร์รอดำเนินการ', weight: 'bold', color: '#fff', size: 'lg' },
+          { type: 'text', text: `${orders.length} รายการ`, color: '#FFD0CC', size: 'xs', margin: 'xs' },
+        ],
+      },
+      body: { type: 'box', layout: 'vertical', spacing: 'none', contents: bodyContents },
+    },
+  };
+}
+
 function packingListFlex(orders) {
   if (orders.length === 0) {
     return {
@@ -995,6 +1061,7 @@ module.exports = {
   adminTrackingReviewFlex,
   pendingShipmentFlex,
   packingListFlex,
+  pendingOrdersOverviewFlex,
   QR_START,
   QR_ORDERING,
   QR_CONFIRM,
