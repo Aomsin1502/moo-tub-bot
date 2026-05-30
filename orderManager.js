@@ -351,8 +351,19 @@ async function handleMessage(event, client) {
     // เรียงลำดับใหม่ — admin พิมพ์ "2 1 3" เพื่อสลับ tracking
     // ─── Letter-based tracking assignment: "D B F" ──────────────
     const letterMatch = text.trim().match(/^[A-Za-z](\s+[A-Za-z])*$/);
-    if (letterMatch && adminPendingData[userId] && adminPendingMatches[userId] !== undefined) {
-      const { trackings, allOrders } = adminPendingData[userId];
+    if (letterMatch) {
+      if (!adminPendingData[userId]) {
+        await send(client, event.replyToken, { type: 'text', text: '⚠️ ข้อมูลหมดอายุแล้วครับ กรุณาส่งรูปใบเสร็จใหม่อีกครั้ง' });
+        return;
+      }
+      // รองรับทั้ง allOrders และ orders (backward compatible)
+      const allOrders = adminPendingData[userId].allOrders || adminPendingData[userId].orders || [];
+      const trackings = adminPendingData[userId].trackings || [];
+      if (allOrders.length === 0 || trackings.length === 0) {
+        await send(client, event.replyToken, { type: 'text', text: '⚠️ ข้อมูลหมดอายุแล้วครับ กรุณาส่งรูปใบเสร็จใหม่อีกครั้ง' });
+        return;
+      }
+      {
       const letters = text.trim().toUpperCase().split(/\s+/);
       const maxIdx = allOrders.length;
       const maxLetter = String.fromCharCode(64 + maxIdx);
@@ -396,8 +407,10 @@ async function handleMessage(event, client) {
       const newUnpaired = allOrders.filter((_, i) => !usedLetters.has(String.fromCharCode(65 + i)));
 
       adminPendingMatches[userId] = newPairs;
+      adminPendingData[userId].allOrders = allOrders; // ensure stored
       await send(client, event.replyToken, adminTrackingReviewFlex(newPairs, [], newUnpaired, trackings));
       return;
+      }
     }
 
     // ยืนยัน tracking batch (หลัง OCR review)
