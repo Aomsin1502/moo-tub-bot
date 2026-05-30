@@ -281,7 +281,11 @@ async function handleMessage(event, client) {
           });
           return { orderId: o.orderId, displayName: o.displayName, items, total: o.total, address: o.address };
         });
-        return client.pushMessage({ to: userId, messages: [packingListFlex(orders)] });
+        // Debug: ส่ง text ก่อน ถ้าใช้ได้ค่อยเปลี่ยนเป็น Flex
+        const debugText = orders.map((o,i) =>
+          `${i+1}. ${o.orderId}\n👤 ${o.displayName}\n🛍 ${o.items.map(it=>`${it.name}x${it.qty}`).join(', ')}\n💰 ${o.total}฿\n📍 ${o.address}`
+        ).join('\n─────────────\n');
+        return client.pushMessage({ to: userId, messages: [{ type: 'text', text: `📦 Packing ${orders.length} รายการ\n─────────────\n${debugText}` }] });
       }).catch(err => {
         console.error('[packing] error:', err.message);
         client.pushMessage({ to: userId, messages: [{ type: 'text', text: `❌ packing error: ${err.message}` }] });
