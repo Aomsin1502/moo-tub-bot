@@ -628,6 +628,68 @@ function adminOrderFlex(orderId, cart, total, address, displayName) {
   };
 }
 
+function pendingShipmentFlex(orders) {
+  if (orders.length === 0) {
+    return {
+      type: 'flex',
+      altText: '📋 ไม่มีออเดอร์รอจัดส่ง',
+      contents: {
+        type: 'bubble',
+        header: {
+          type: 'box', layout: 'vertical', backgroundColor: '#7D3C98', paddingAll: '16px',
+          contents: [{ type: 'text', text: '📋 รายการรอจัดส่ง', weight: 'bold', color: '#FFFFFF', size: 'lg' }],
+        },
+        body: {
+          type: 'box', layout: 'vertical', paddingAll: 'xl',
+          contents: [{ type: 'text', text: '✅ ไม่มีออเดอร์รอจัดส่งครับ', align: 'center', color: '#888888' }],
+        },
+      },
+    };
+  }
+
+  const rows = [];
+  orders.forEach((o, i) => {
+    if (i > 0) rows.push({ type: 'separator', margin: 'sm' });
+    rows.push({
+      type: 'box', layout: 'vertical', paddingTop: 'sm', paddingBottom: 'sm',
+      contents: [
+        {
+          type: 'box', layout: 'horizontal',
+          contents: [
+            { type: 'text', text: `${i + 1}.`, flex: 0, size: 'md', weight: 'bold', color: '#7D3C98' },
+            { type: 'text', text: o.displayName, flex: 1, size: 'md', weight: 'bold', color: '#1a1a1a', margin: 'sm' },
+            { type: 'text', text: `${o.total}฿`, flex: 0, size: 'sm', color: '#C0392B', weight: 'bold' },
+          ],
+        },
+        { type: 'text', text: `    ${o.orderId}`, size: 'xs', color: '#888888', margin: 'xs' },
+      ],
+    });
+  });
+
+  rows.push({ type: 'separator', margin: 'md' });
+  rows.push({
+    type: 'text',
+    text: '📌 จัดเรียงสลิปตามลำดับด้านบน\nแล้วถ่ายรูปส่งได้เลยครับ',
+    size: 'xs', color: '#888888', margin: 'md', wrap: true,
+  });
+
+  return {
+    type: 'flex',
+    altText: `📋 รายการรอจัดส่ง ${orders.length} ออเดอร์`,
+    contents: {
+      type: 'bubble',
+      header: {
+        type: 'box', layout: 'vertical', backgroundColor: '#7D3C98', paddingAll: '16px',
+        contents: [
+          { type: 'text', text: '📋 รายการรอจัดส่ง', weight: 'bold', color: '#FFFFFF', size: 'lg' },
+          { type: 'text', text: `${orders.length} ออเดอร์`, color: '#D7BDE2', size: 'xs' },
+        ],
+      },
+      body: { type: 'box', layout: 'vertical', spacing: 'none', contents: rows },
+    },
+  };
+}
+
 function adminTrackingReviewFlex(pairs, unpairedTrackings, unpairedOrders) {
   const bodyContents = [];
 
@@ -763,6 +825,7 @@ module.exports = {
   qtyPickerFlex,
   adminOrderFlex,
   adminTrackingReviewFlex,
+  pendingShipmentFlex,
   QR_START,
   QR_ORDERING,
   QR_CONFIRM,

@@ -4,7 +4,7 @@ const { extractTrackingNumbers } = require('./visionService');
 const {
   welcomeFlex, cartFlex, paymentFlex,
   slipReceivedFlex, orderConfirmedFlex, shippedFlex,
-  statusFlex, cancelConfirmFlex, catalogFlex, qtyPickerFlex, adminOrderFlex, adminTrackingReviewFlex,
+  statusFlex, cancelConfirmFlex, catalogFlex, qtyPickerFlex, adminOrderFlex, adminTrackingReviewFlex, pendingShipmentFlex,
   QR_START, QR_ORDERING, QR_CONFIRM, QR_CANCEL, QR_MENU, adminQR,
 } = require('./messages');
 
@@ -235,6 +235,16 @@ async function handleMessage(event, client) {
 
   // ─── Admin commands ────────────────────────────────────────
   if (ADMIN_USER_ID && userId === ADMIN_USER_ID) {
+
+    // รายการรอจัดส่ง (กำลัง Packing)
+    if (['รายการส่ง', 'รายการจัดส่ง', 'ค้างส่ง'].includes(lower)) {
+      const pending = Object.entries(orderStatus)
+        .filter(([, o]) => o.status === 'กำลัง Packing')
+        .sort(([a], [b]) => a.localeCompare(b))
+        .map(([orderId, o]) => ({ orderId, displayName: o.displayName, total: o.total }));
+      await send(client, event.replyToken, pendingShipmentFlex(pending));
+      return;
+    }
 
     // ยืนยัน tracking batch (หลัง OCR review)
     if (lower === 'ยืนยัน tracking') {
