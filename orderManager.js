@@ -289,20 +289,36 @@ async function handleMessage(event, client) {
     // ล้างประวัติทั้งหมด (สำหรับทดสอบ)
     // ออเดอร์รอดำเนินการทั้งหมด (รอยืนยัน + รอแพค + รอส่ง)
     // ─── รอยืนยัน — รายการที่ยังไม่ได้ยืนยัน ────────────────────
+    // helper: parse itemsStr → items array (เหมือนกับที่ packing เดิมทำ)
+    function parseSheetOrders(sheetOrders, footerBtnText) {
+      const { FLAT_ITEMS } = require('./menu');
+      return sheetOrders.map(o => {
+        const items = (o.itemsStr || '').split(',').map(s => {
+          const m = s.trim().match(/^(.+?)x(\d+)$/i);
+          if (!m) return { name: s.trim(), price: 0, qty: 1, subtotal: 0, weight: 0 };
+          const name = m[1].trim();
+          const qty  = parseInt(m[2]) || 1;
+          const found = FLAT_ITEMS.find(fi => fi.name === name);
+          const price = found ? found.price : 0;
+          return { name, price, qty, subtotal: price * qty, weight: found ? (found.weight || 0) : 0 };
+        });
+        return { orderId: o.orderId, displayName: o.displayName, items, total: o.total, address: o.address, itemsStr: o.itemsStr || '', _footerBtn: footerBtnText };
+      });
+    }
+
     if (lower === 'รอยืนยัน') {
       await send(client, event.replyToken, { type: 'text', text: '⏳ กำลังดึงรายการรอยืนยัน...' });
-      getOrdersByStatus('รอยืนยัน').then(async orders => {
-        if (!orders.length) return client.pushMessage({ to: userId, messages: [{ type: 'text', text: '✅ ไม่มีออเดอร์รอยืนยันครับ' }] });
-        for (const o of orders.slice(0, 10)) {
-          await client.pushMessage({ to: userId, messages: [{
-            type: 'text',
-            text: `⏳ รอยืนยัน\n#${o.orderId}\n👤 ${o.displayName}  💰 ${o.total}฿\n🛍 ${(o.itemsStr||'').slice(0,80)}\n📍 ${(o.address||'').slice(0,80)}`,
-            quickReply: { items: [
-              { type: 'action', action: { type: 'message', label: '✅ ยืนยัน', text: `ยืนยัน ${o.orderId}` } },
-              { type: 'action', action: { type: 'message', label: '❌ ยกเลิก', text: `ยกเลิกออเดอร์แอดมิน ${o.orderId}` } },
-            ]},
-          }] });
-        }
+      getOrdersByStatus('รอยืนยัน').then(sheetOrders => {
+        if (!sheetOrders.length) return client.pushMessage({ to: userId, messages: [{ type: 'text', text: '✅ ไม่มีออเดอร์รอยืนยันครับ' }] });
+        const orders = parseSheetOrders(sheetOrders, 'ยืนยัน');
+        // ใช้ packingListFlex แต่เปลี่ยน footer button
+        const flex = packingListFlex(orders.map(o => ({
+          ...o,
+          _btnLabel: '✅ ยืนยัน',
+          _btnText: `ยืนยัน ${o.orderId}`,
+          _btnColor: '#27AE60',
+        })));
+        return client.pushMessage({ to: userId, messages: [flex] });
       }).catch(err => client.pushMessage({ to: userId, messages: [{ type: 'text', text: `❌ ${err.message}` }] }));
       return;
     }
@@ -310,18 +326,10 @@ async function handleMessage(event, client) {
     // ─── รอแพค — รายการที่รอแพคสินค้า ───────────────────────────
     if (['รอแพค', 'packing'].includes(lower)) {
       await send(client, event.replyToken, { type: 'text', text: '⏳ กำลังดึงข้อมูลจาก Sheets...' });
-      getOrdersByStatuses(['รอแพค', 'กำลัง Packing']).then(async orders => {
-        if (!orders.length) return client.pushMessage({ to: userId, messages: [{ type: 'text', text: '✅ ไม่มีออเดอร์รอแพคครับ' }] });
-        for (const o of orders.slice(0, 10)) {
-          await client.pushMessage({ to: userId, messages: [{
-            type: 'text',
-            text: `📦 รอแพค\n#${o.orderId}\n👤 ${o.displayName}  💰 ${o.total}฿\n🛍 ${(o.itemsStr||'').slice(0,80)}\n📍 ${(o.address||'').slice(0,80)}`,
-            quickReply: { items: [
-              { type: 'action', action: { type: 'message', label: '✅ พร้อมส่ง', text: `พร้อมส่ง ${o.orderId}` } },
-              { type: 'action', action: { type: 'message', label: '❌ ยกเลิก', text: `ยกเลิกออเดอร์แอดมิน ${o.orderId}` } },
-            ]},
-          }] });
-        }
+      getOrdersByStatuses(['รอแพค', 'กำลัง Packing']).then(sheetOrders => {
+        if (!sheetOrders.length) return client.pushMessage({ to: userId, messages: [{ type: 'text', text: '✅ ไม่มีออเดอร์รอแพคครับ' }] });
+        const orders = parseSheetOrders(sheetOrders, 'พร้อมส่ง');
+        return client.pushMessage({ to: userId, messages: [packingListFlex(orders)] });
       }).catch(err => client.pushMessage({ to: userId, messages: [{ type: 'text', text: `❌ ${err.message}` }] }));
       return;
     }

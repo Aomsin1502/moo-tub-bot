@@ -961,8 +961,14 @@ function packingListFlex(orders) {
         type: 'box', layout: 'vertical', paddingAll: 'sm',
         contents: [{
           type: 'button',
-          action: { type: 'message', label: '✅ พร้อมส่ง', text: `พร้อมส่ง ${o.orderId}` },
-          style: 'primary', color: '#27AE60', height: 'sm',
+          action: {
+            type: 'message',
+            label: o._btnLabel || '✅ พร้อมส่ง',
+            text: o._btnText || `พร้อมส่ง ${o.orderId}`,
+          },
+          style: 'primary',
+          color: o._btnColor || '#27AE60',
+          height: 'sm',
         }],
       },
     };
