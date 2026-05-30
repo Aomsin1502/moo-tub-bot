@@ -16,6 +16,57 @@ const CATALOG_ITEMS = [
   { name: 'น้ำพริกกากหมู 500g', price: 250, imageUrl: _img('น้ำพริกกากหมู 500 กรัม.jpg') },
 ];
 
+function menuFlex() {
+  const { MENU } = require('./menu');
+  const rows = [];
+  MENU.forEach(cat => {
+    rows.push({
+      type: 'box', layout: 'horizontal', margin: 'md',
+      contents: [
+        { type: 'text', text: cat.category, size: 'xs', weight: 'bold', color: '#C0392B', flex: 1 },
+      ],
+    });
+    cat.items.forEach(item => {
+      rows.push({
+        type: 'box', layout: 'horizontal', paddingTop: 'xs',
+        contents: [
+          { type: 'text', text: `  ${item.name}`, size: 'xs', color: '#333333', flex: 4, wrap: true },
+          { type: 'text', text: `${item.price}฿`, size: 'xs', color: '#C0392B', flex: 1, align: 'end', weight: 'bold' },
+        ],
+      });
+    });
+    rows.push({ type: 'separator', margin: 'sm' });
+  });
+
+  return {
+    type: 'flex',
+    altText: '🐷 ราคาสินค้า หมูทุบแม่บัวเผื่อน',
+    contents: {
+      type: 'bubble',
+      size: 'mega',
+      header: {
+        type: 'box', layout: 'vertical', backgroundColor: '#C0392B', paddingAll: '16px',
+        contents: [
+          { type: 'text', text: '🐷 ราคาสินค้า', weight: 'bold', color: '#FFFFFF', size: 'lg' },
+          { type: 'text', text: 'หมูทุบแม่บัวเผื่อน • ชุมพร', color: '#FFD0CC', size: 'xs', margin: 'xs' },
+        ],
+      },
+      body: {
+        type: 'box', layout: 'vertical', spacing: 'none', paddingAll: 'md',
+        contents: rows,
+      },
+      footer: {
+        type: 'box', layout: 'vertical', paddingAll: 'md',
+        contents: [{
+          type: 'button',
+          action: { type: 'uri', label: '🛒 สั่งสินค้าเลย', uri: 'https://liff.line.me/2010237396-QOmKN3ML' },
+          style: 'primary', color: '#C0392B',
+        }],
+      },
+    },
+  };
+}
+
 function welcomeFlex() {
   return {
     type: 'flex',
@@ -849,6 +900,7 @@ const QR_QTY = qr([
 ]);
 
 module.exports = {
+  menuFlex,
   welcomeFlex,
   cartFlex,
   paymentFlex,

@@ -4,7 +4,7 @@ const { extractTrackingNumbers } = require('./visionService');
 const {
   welcomeFlex, cartFlex, paymentFlex,
   slipReceivedFlex, orderConfirmedFlex, shippedFlex,
-  statusFlex, cancelConfirmFlex, catalogFlex, qtyPickerFlex, adminOrderFlex, adminTrackingReviewFlex, pendingShipmentFlex,
+  menuFlex, statusFlex, cancelConfirmFlex, catalogFlex, qtyPickerFlex, adminOrderFlex, adminTrackingReviewFlex, pendingShipmentFlex,
   QR_START, QR_ORDERING, QR_CONFIRM, QR_CANCEL, QR_MENU, adminQR,
 } = require('./messages');
 
@@ -446,19 +446,7 @@ async function handleMessage(event, client) {
 
   // ─── แคตตาล็อกรูปสินค้า ──────────────────────────────────────
   if (['เมนู', 'menu', 'สินค้า', 'ดูเมนู', 'แคตตาล็อก', 'catalog', 'รูปสินค้า'].includes(lower)) {
-    try {
-      await send(client, event.replyToken, [
-        catalogFlex(),
-        {
-          type: 'text',
-          text: '🐷 กดเลือกจำนวนที่ต้องการจากรูปสินค้าได้เลยครับ!\nหรือกด "เมนูทั้งหมด" เพื่อดูรายการแบบข้อความ',
-          quickReply: QR_MENU,
-        },
-      ]);
-    } catch (err) {
-      console.error('❌ catalogFlex error:', err.response?.data || err.message);
-      await send(client, event.replyToken, { type: 'text', text: getMenuText(), quickReply: QR_START });
-    }
+    await send(client, event.replyToken, menuFlex());
     return;
   }
 
