@@ -129,12 +129,16 @@ async function handleMessage(event, client) {
       });
       try {
         const imageBuffer = await getLineImageBuffer(event.message.id);
-        const trackingNumbers = await extractTrackingNumbers(imageBuffer);
+        const { trackingNumbers, rawText } = await extractTrackingNumbers(imageBuffer);
 
         if (trackingNumbers.length === 0) {
+          const preview = rawText.slice(0, 300) || '(ไม่มีข้อความ)';
           await client.pushMessage({
             to: ADMIN_USER_ID,
-            messages: [{ type: 'text', text: '⚠️ อ่านเลข tracking ไม่พบครับ\nลองถ่ายใหม่ให้ชัดขึ้น หรือแสงสว่างพอครับ' }],
+            messages: [{
+              type: 'text',
+              text: `⚠️ อ่านเลข tracking ไม่พบครับ\n\nข้อความที่ OCR อ่านได้:\n────────────\n${preview}\n────────────\nลองถ่ายใหม่ให้เห็นเลขชัดๆ ครับ`,
+            }],
           });
           return;
         }

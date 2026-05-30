@@ -19,10 +19,11 @@ function getLineImageBuffer(messageId) {
 }
 
 // OCR และดึง tracking numbers จากรูป
+// return: { trackingNumbers: string[], rawText: string }
 async function extractTrackingNumbers(imageBuffer) {
   if (!process.env.GOOGLE_SERVICE_ACCOUNT_JSON) {
     console.log('[Vision] ไม่มี credentials');
-    return [];
+    return { trackingNumbers: [], rawText: '' };
   }
 
   const creds = JSON.parse(process.env.GOOGLE_SERVICE_ACCOUNT_JSON);
@@ -33,19 +34,22 @@ async function extractTrackingNumbers(imageBuffer) {
       image: { content: imageBuffer.toString('base64') },
     });
 
-    const fullText = result.fullTextAnnotation?.text || '';
-    console.log('[Vision] OCR text:\n', fullText);
+    const rawText = result.fullTextAnnotation?.text || '';
+    console.log('[Vision] OCR raw text:\n', rawText);
 
-    // ไปรษณีไทย tracking format: 2 ตัวอักษร + 8-9 ตัวเลข + TH
-    // เช่น EF12345678TH, EF123456789TH, ET12345678TH, RH12345678TH
-    const found = fullText.match(/[A-Z]{2}\d{8,9}TH/g) || [];
-    const unique = [...new Set(found)];
+    // ลบ whitespace ทั้งหมดก่อน match
+    // เพราะ OCR อาจอ่านเลขมีช่องว่างกลาง เช่น "EF 1234 5678 TH" → "EF12345678TH"
+    const noSpace = rawText.replace(/\s+/g, '').toUpperCase();
 
-    console.log('[Vision] tracking numbers:', unique);
-    return unique;
+    // ไปรษณีไทย: 2 ตัวอักษร + 8-11 ตัวเลข + 2 ตัวอักษร ลงท้าย TH
+    const found = noSpace.match(/[A-Z]{2}\d{8,11}[A-Z]{2}/g) || [];
+    const trackingNumbers = [...new Set(found.filter(t => t.endsWith('TH')))];
+
+    console.log('[Vision] tracking numbers:', trackingNumbers);
+    return { trackingNumbers, rawText };
   } catch (err) {
     console.error('[Vision] OCR error:', err.message);
-    return [];
+    return { trackingNumbers: [], rawText: '' };
   }
 }
 
