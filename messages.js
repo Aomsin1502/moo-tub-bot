@@ -823,24 +823,9 @@ function pendingOrdersOverviewFlex(orders) {
 // Flex carousel สำหรับทุก status — ปุ่มเปลี่ยนตาม status
 function orderStatusFlex(orders, status) {
   const CFG = {
-    'รอยืนยัน': {
-      color: '#E67E22', altText: 'รอยืนยัน',
-      btns: [
-        { label: '✅ ยืนยัน',  text: o => `ยืนยัน ${o.orderId}`,                  color: '#27AE60' },
-        { label: '❌ ยกเลิก', text: o => `ยกเลิกออเดอร์แอดมิน ${o.orderId}`,    color: null },
-      ],
-    },
-    'รอแพค': {
-      color: '#2980B9', altText: 'รอแพค',
-      btns: [
-        { label: '📫 พร้อมส่ง', text: o => `พร้อมส่ง ${o.orderId}`, color: '#1A5276' },
-        { label: '❌ ยกเลิก',  text: o => `ยกเลิกออเดอร์แอดมิน ${o.orderId}`, color: null },
-      ],
-    },
-    'รอส่ง': {
-      color: '#1A5276', altText: 'รอส่ง',
-      btns: [],
-    },
+    'รอยืนยัน': { color: '#E67E22', altText: 'รอยืนยัน', btnLabel: '✅ ยืนยัน',   btnText: o => `ยืนยัน ${o.orderId}`,    btnColor: '#27AE60' },
+    'รอแพค':    { color: '#2980B9', altText: 'รอแพค',    btnLabel: '📫 พร้อมส่ง', btnText: o => `พร้อมส่ง ${o.orderId}`, btnColor: '#1A5276' },
+    'รอส่ง':    { color: '#1A5276', altText: 'รอส่ง',    btnLabel: null },
   };
   const cfg = CFG[status] || CFG['รอแพค'];
   const safe = s => String(s || '-').substring(0, 300);
@@ -869,14 +854,6 @@ function orderStatusFlex(orders, status) {
       { type: 'text', text: safe(o.itemsStr || o.items?.map(i=>`${i.name}×${i.qty}`).join(', ')), size: 'sm', color: '#333333', wrap: true },
     ];
 
-    const footerBtns = cfg.btns.map(b => ({
-      type: 'button',
-      action: { type: 'message', label: b.label, text: b.text(o) },
-      style: b.color ? 'primary' : 'secondary',
-      ...(b.color ? { color: b.color } : {}),
-      height: 'sm',
-    }));
-
     return {
       type: 'bubble',
       header: {
@@ -904,10 +881,14 @@ function orderStatusFlex(orders, status) {
           { type: 'text', text: safe(o.address), size: 'sm', color: '#1A5276', wrap: true, margin: 'xs' },
         ],
       },
-      ...(footerBtns.length > 0 ? {
+      ...(cfg.btnLabel ? {
         footer: {
-          type: 'box', layout: 'vertical', spacing: 'sm', paddingAll: 'sm',
-          contents: footerBtns,
+          type: 'box', layout: 'vertical', paddingAll: 'sm',
+          contents: [{
+            type: 'button',
+            action: { type: 'message', label: cfg.btnLabel, text: cfg.btnText(o) },
+            style: 'primary', color: cfg.btnColor, height: 'sm',
+          }],
         },
       } : {}),
     };
