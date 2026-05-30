@@ -40,7 +40,7 @@ app.get('/shop', (req, res) => {
 // รับออเดอร์จาก LIFF
 app.post('/api/liff-order', express.json(), async (req, res) => {
   try {
-    const { userId, displayName, items } = req.body;
+    const { userId, displayName, items, address, slip } = req.body;
     if (!userId || !items || items.length === 0) {
       return res.status(400).json({ ok: false, error: 'invalid data' });
     }
