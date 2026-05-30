@@ -350,67 +350,55 @@ async function handleMessage(event, client) {
 
     // เรียงลำดับใหม่ — admin พิมพ์ "2 1 3" เพื่อสลับ tracking
     // ─── Letter-based tracking assignment: "D B F" ──────────────
-    const letterMatch = text.trim().match(/^[A-Za-z](\s+[A-Za-z])*$/);
-    if (letterMatch) {
-      if (!adminPendingData[userId]) {
-        await send(client, event.replyToken, { type: 'text', text: '⚠️ ข้อมูลหมดอายุแล้วครับ กรุณาส่งรูปใบเสร็จใหม่อีกครั้ง' });
-        return;
-      }
-      // รองรับทั้ง allOrders และ orders (backward compatible)
+    if (/^[A-Za-z](\s+[A-Za-z])*$/.test(text.trim()) && adminPendingData[userId]) {
       const allOrders = adminPendingData[userId].allOrders || adminPendingData[userId].orders || [];
-      const trackings = adminPendingData[userId].trackings || [];
-      if (allOrders.length === 0 || trackings.length === 0) {
-        await send(client, event.replyToken, { type: 'text', text: '⚠️ ข้อมูลหมดอายุแล้วครับ กรุณาส่งรูปใบเสร็จใหม่อีกครั้ง' });
+      const trackings  = adminPendingData[userId].trackings || [];
+
+      if (!allOrders.length || !trackings.length) {
+        await send(client, event.replyToken, { type: 'text', text: '⚠️ ข้อมูลหมดอายุ กรุณาส่งรูปใบเสร็จใหม่ครับ' });
         return;
       }
-      {
-      const letters = text.trim().toUpperCase().split(/\s+/);
-      const maxIdx = allOrders.length;
+
+      const letters   = text.trim().toUpperCase().split(/\s+/);
+      const maxIdx    = allOrders.length;
       const maxLetter = String.fromCharCode(64 + maxIdx);
 
-      // Validate 1: จำนวนต้องตรงกับ tracking
       if (letters.length !== trackings.length) {
         await send(client, event.replyToken, {
           type: 'text',
-          text: `⚠️ ต้องพิมพ์ ${trackings.length} ตัวอักษร (tracking มี ${trackings.length} ตัว)\nเช่น: ${Array.from({length: trackings.length}, (_, i) => String.fromCharCode(65+i)).join(' ')}`,
+          text: `⚠️ ต้องพิมพ์ ${trackings.length} ตัวอักษร\nเช่น: ${Array.from({length: trackings.length}, (_, i) => String.fromCharCode(65+i)).join(' ')}`,
         });
         return;
       }
 
-      // Validate 2: ตัวอักษรต้องอยู่ในช่วง A-maxLetter
-      const invalid = letters.filter(l => l.charCodeAt(0) < 65 || l.charCodeAt(0) > 64 + maxIdx);
-      if (invalid.length > 0) {
+      const invalidL = letters.filter(l => l.charCodeAt(0) < 65 || l.charCodeAt(0) > 64 + maxIdx);
+      if (invalidL.length > 0) {
         await send(client, event.replyToken, {
           type: 'text',
-          text: `⚠️ ตัวอักษร "${invalid.join(', ')}" ไม่ถูกต้อง\nใช้ได้ A–${maxLetter} (${maxIdx} ออเดอร์) เท่านั้นครับ`,
+          text: `⚠️ ตัวอักษร "${invalidL.join(', ')}" ไม่ถูกต้อง\nใช้ได้ A–${maxLetter} เท่านั้นครับ`,
         });
         return;
       }
 
-      // Validate 3: ห้ามซ้ำ
       if (new Set(letters).size !== letters.length) {
-        await send(client, event.replyToken, {
-          type: 'text',
-          text: '⚠️ ตัวอักษรซ้ำกัน กรุณาใช้แต่ละตัวครั้งเดียวครับ',
-        });
+        await send(client, event.replyToken, { type: 'text', text: '⚠️ ตัวอักษรซ้ำกัน ใช้แต่ละตัวครั้งเดียวครับ' });
         return;
       }
 
-      // สร้าง pairs ใหม่
       const letterMap = {};
       allOrders.forEach((o, i) => { letterMap[String.fromCharCode(65 + i)] = o; });
+
       const newPairs = letters.map((letter, i) => {
         const o = letterMap[letter];
         return { orderId: o.orderId, trackingNo: trackings[i], userId: o.userId, displayName: o.displayName, address: o.address || '' };
       });
-      const usedLetters = new Set(letters);
-      const newUnpaired = allOrders.filter((_, i) => !usedLetters.has(String.fromCharCode(65 + i)));
+      const usedSet    = new Set(letters);
+      const newUnpaired = allOrders.filter((_, i) => !usedSet.has(String.fromCharCode(65 + i)));
 
       adminPendingMatches[userId] = newPairs;
-      adminPendingData[userId].allOrders = allOrders; // ensure stored
+      adminPendingData[userId].allOrders = allOrders;
       await send(client, event.replyToken, adminTrackingReviewFlex(newPairs, [], newUnpaired, trackings));
       return;
-      }
     }
 
     // ยืนยัน tracking batch (หลัง OCR review)
