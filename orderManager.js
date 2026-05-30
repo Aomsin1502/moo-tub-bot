@@ -208,6 +208,8 @@ async function handleMessage(event, client) {
 
         adminPendingMatches[userId] = pairs;
         adminPendingData[userId] = { trackings: trackingNumbers, allOrders: pendingOrders };
+        // ล้าง sequential queue เพื่อไม่ให้ขัดแย้งกับ letter assignment
+        delete adminTrackingQueue[userId];
 
         await client.pushMessage({
           to: ADMIN_USER_ID,
@@ -434,7 +436,8 @@ async function handleMessage(event, client) {
 
     // กำลังกรอก tracking queue ทีละรายการ
     const queue = adminTrackingQueue[userId];
-    if (queue && queue.index < queue.orders.length) {
+    // ถ้ากำลังอยู่ใน OCR review (letter assignment mode) → ข้าม sequential queue
+    if (queue && queue.index < queue.orders.length && !adminPendingData[userId]) {
       const cur = queue.orders[queue.index];
       const total = queue.orders.length;
 
