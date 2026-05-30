@@ -132,10 +132,9 @@ async function handleMessage(event, client) {
         type: 'text', text: '🔍 กำลังอ่าน tracking...',
       });
       try {
-        const { pairs: ocrPairs, rawText, imageSize, statusCode } = await extractTrackingNumbers(event.message.id);
+        const { trackingNumbers, rawText, imageSize, statusCode } = await extractTrackingNumbers(event.message.id);
 
-        const validPairs = ocrPairs.filter(p => p.trackingNo);
-        if (validPairs.length === 0) {
+        if (trackingNumbers.length === 0) {
           const preview = rawText.slice(0, 300) || '(ไม่มีข้อความ)';
           const sizekb  = (imageSize / 1024).toFixed(1);
           await client.pushMessage({
@@ -148,39 +147,22 @@ async function handleMessage(event, client) {
           return;
         }
 
-        // ดึง orders ที่สถานะ "กำลัง Packing"
+        // ดึง orders สถานะ "กำลัง Packing" เรียงตาม orderId
         const pendingOrders = Object.entries(orderStatus)
           .filter(([, o]) => o.status === 'กำลัง Packing')
           .sort(([a], [b]) => a.localeCompare(b))
           .map(([orderId, o]) => ({ orderId, ...o }));
 
-        // จับคู่ด้วยชื่อผู้รับ (ดีกว่า positional)
-        const usedOrderIds = new Set();
+        // จับคู่ positional — ชื่อลูกค้ามาจากระบบ ไม่ใช่ OCR
         const pairs = [];
-        const unpairedTrackings = [];
-
-        for (const { name, trackingNo } of validPairs) {
-          let matched = null;
-          if (name) {
-            // หา order ที่ address หรือ displayName มีชื่อผู้รับ
-            matched = pendingOrders.find(o =>
-              !usedOrderIds.has(o.orderId) &&
-              (o.address?.includes(name) || o.displayName?.includes(name))
-            );
+        trackingNumbers.forEach((trackingNo, i) => {
+          if (i < pendingOrders.length) {
+            const o = pendingOrders[i];
+            pairs.push({ orderId: o.orderId, trackingNo, userId: o.userId, displayName: o.displayName });
           }
-          // fallback: ถ้าไม่เจอชื่อ จับ positional กับที่เหลือ
-          if (!matched) {
-            matched = pendingOrders.find(o => !usedOrderIds.has(o.orderId));
-          }
-
-          if (matched) {
-            usedOrderIds.add(matched.orderId);
-            pairs.push({ orderId: matched.orderId, trackingNo, userId: matched.userId, displayName: matched.displayName });
-          } else {
-            unpairedTrackings.push(trackingNo);
-          }
-        }
-        const unpairedOrders = pendingOrders.filter(o => !usedOrderIds.has(o.orderId));
+        });
+        const unpairedTrackings = trackingNumbers.slice(pendingOrders.length);
+        const unpairedOrders    = pendingOrders.slice(trackingNumbers.length);
 
         adminPendingMatches[userId] = pairs;
 
