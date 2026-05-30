@@ -38,36 +38,38 @@ function fixOcrDigits(str) {
   });
 }
 
-// parse ใบเสร็จไปรษณีไทย — ดึง {name, trackingNo} ทุกรายการ
+// parse ใบเสร็จไปรษณีไทย — ค้นแบบ global ทั้งข้อความ
 function parseThaiPostReceipt(rawText) {
+  // 1. ดึงชื่อผู้รับทั้งหมด (global search)
+  const names = [];
+  const nameRe = /ผู้รับ\s*:\s*([฀-๿]+(?:[\s][฀-๿]+)*)/g;
+  let m;
+  while ((m = nameRe.exec(rawText)) !== null) {
+    const name = m[1].trim();
+    if (name) names.push(name);
+  }
+
+  // 2. ดึง tracking ทั้งหมดจากข้อความรวม (global, ลบ whitespace ก่อน)
+  const noSpace = rawText.replace(/\s/g, '').toUpperCase();
+  const fixed   = fixOcrDigits(noSpace);
+  const trackRe = /[A-Z]{2}\d{8,11}TH/g;
+  const trackings = [...new Set((fixed.match(trackRe) || []))];
+
+  console.log('[OCR] names found:', names);
+  console.log('[OCR] trackings found:', trackings);
+
+  // 3. จับคู่ตามลำดับ (ในใบเสร็จ ชื่อกับ tracking เรียงลำดับเดียวกัน)
+  const maxLen = Math.max(names.length, trackings.length);
+  if (maxLen === 0) return [];
+
   const pairs = [];
-  const lines = rawText.split('\n').map(l => l.trim()).filter(l => l);
-
-  for (const line of lines) {
-    // ดึงชื่อผู้รับจาก pattern "ผู้รับ: ชื่อ"
-    const nameMatch = line.match(/ผู้รับ\s*:\s*([^\s][฀-๿a-zA-Z\s]+?)(?:\s{2,}|ET\s|EF\s|RH\s|ER\s|$)/);
-    const name = nameMatch ? nameMatch[1].trim() : '';
-
-    // ดึง tracking จากบรรทัดเดียวกัน
-    const lineNoSpace = line.replace(/\s/g, '').toUpperCase();
-    const lineFixed   = fixOcrDigits(lineNoSpace);
-    const trackMatch  = lineFixed.match(/[A-Z]{2}\d{8,11}TH/);
-    const trackingNo  = trackMatch ? trackMatch[0] : null;
-
-    if (name || trackingNo) {
-      pairs.push({ name, trackingNo });
-      console.log(`[OCR] pair: "${name}" → ${trackingNo}`);
-    }
+  for (let i = 0; i < maxLen; i++) {
+    pairs.push({
+      name:      names[i]     || '',
+      trackingNo: trackings[i] || null,
+    });
+    console.log(`[OCR] pair ${i + 1}: "${names[i] || ''}" → ${trackings[i] || 'null'}`);
   }
-
-  // fallback: ถ้าไม่เจอ pattern ผู้รับ ให้ดึงแค่ tracking numbers
-  if (pairs.length === 0) {
-    const noSpace = rawText.replace(/\s/g, '').toUpperCase();
-    const fixed   = fixOcrDigits(noSpace);
-    const found   = fixed.match(/[A-Z]{2}\d{8,11}TH/g) || [];
-    return [...new Set(found)].map(t => ({ name: '', trackingNo: t }));
-  }
-
   return pairs;
 }
 
