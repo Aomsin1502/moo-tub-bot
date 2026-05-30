@@ -23,15 +23,15 @@ function menuFlex() {
     rows.push({
       type: 'box', layout: 'horizontal', margin: 'md',
       contents: [
-        { type: 'text', text: cat.category, size: 'xs', weight: 'bold', color: '#C0392B', flex: 1 },
+        { type: 'text', text: cat.category, size: 'sm', weight: 'bold', color: '#C0392B', flex: 1 },
       ],
     });
     cat.items.forEach(item => {
       rows.push({
         type: 'box', layout: 'horizontal', paddingTop: 'xs',
         contents: [
-          { type: 'text', text: `  ${item.name}`, size: 'xs', color: '#333333', flex: 4, wrap: true },
-          { type: 'text', text: `${item.price}฿`, size: 'xs', color: '#C0392B', flex: 1, align: 'end', weight: 'bold' },
+          { type: 'text', text: `  ${item.name}`, size: 'sm', color: '#333333', flex: 4, wrap: true },
+          { type: 'text', text: `${item.price}฿`, size: 'sm', color: '#C0392B', flex: 1, align: 'end', weight: 'bold' },
         ],
       });
     });
@@ -43,12 +43,12 @@ function menuFlex() {
     altText: '🐷 ราคาสินค้า หมูทุบแม่บัวเผื่อน',
     contents: {
       type: 'bubble',
-      size: 'mega',
+      size: 'giga',
       header: {
         type: 'box', layout: 'vertical', backgroundColor: '#C0392B', paddingAll: '16px',
         contents: [
-          { type: 'text', text: '🐷 ราคาสินค้า', weight: 'bold', color: '#FFFFFF', size: 'lg' },
-          { type: 'text', text: 'หมูทุบแม่บัวเผื่อน • ชุมพร', color: '#FFD0CC', size: 'xs', margin: 'xs' },
+          { type: 'text', text: '🐷 ราคาสินค้า', weight: 'bold', color: '#FFFFFF', size: 'xl' },
+          { type: 'text', text: 'หมูทุบแม่บัวเผื่อน • ชุมพร', color: '#FFD0CC', size: 'sm', margin: 'xs' },
         ],
       },
       body: {
