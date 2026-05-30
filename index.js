@@ -32,6 +32,27 @@ app.get('/', (req, res) => {
   res.send('🐷 หมูทุบแม่บัวเผื่อน Bot is running!');
 });
 
+// LIFF Shop page
+app.get('/shop', (req, res) => {
+  res.sendFile(require('path').join(__dirname, 'public', 'shop', 'index.html'));
+});
+
+// รับออเดอร์จาก LIFF
+app.post('/api/liff-order', express.json(), async (req, res) => {
+  try {
+    const { userId, displayName, items } = req.body;
+    if (!userId || !items || items.length === 0) {
+      return res.status(400).json({ ok: false, error: 'invalid data' });
+    }
+    const { handleLiffOrder } = require('./orderManager');
+    await handleLiffOrder({ userId, displayName, items }, client);
+    res.json({ ok: true });
+  } catch (err) {
+    console.error('LIFF order error:', err.message);
+    res.status(500).json({ ok: false, error: err.message });
+  }
+});
+
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
   console.log(`🚀 Server running on port ${PORT}`);

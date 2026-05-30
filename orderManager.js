@@ -878,4 +878,39 @@ async function handleMessage(event, client) {
   }
 }
 
-module.exports = { handleMessage };
+// ─── รับออเดอร์จาก LIFF ───────────────────────────────────────
+async function handleLiffOrder({ userId, displayName, items }, client) {
+  const state = getState(userId);
+  state.displayName = displayName;
+  state.state = 'ordering';
+
+  // สร้าง cart จาก LIFF items
+  state.cart = items.map(i => ({
+    name: i.name,
+    price: i.price,
+    qty: i.qty,
+    subtotal: i.price * i.qty,
+    weight: (require('./menu').FLAT_ITEMS.find(m => m.name === i.name) || {}).weight || 0,
+  }));
+
+  // เปลี่ยนสถานะเป็นรอที่อยู่
+  state.state = 'waiting_address';
+  state.orderId = generateOrderId();
+
+  const total = state.cart.reduce((s, i) => s + i.price * i.qty, 0);
+  const cartLines = state.cart.map(i => `• ${i.name} ×${i.qty} = ${i.price * i.qty} บ.`).join('\n');
+
+  // Push ให้ลูกค้าพิมพ์ที่อยู่
+  await client.pushMessage({
+    to: userId,
+    messages: [
+      {
+        type: 'text',
+        text: `🛒 ได้รับออเดอร์แล้วครับ!\n\n${cartLines}\n\n💰 รวม: ${total} บาท\n⚠️ ยังไม่รวมค่าส่ง\n\n📦 กรุณาพิมพ์ที่อยู่จัดส่ง:\nชื่อ / ที่อยู่ / เบอร์โทร`,
+        quickReply: QR_CANCEL,
+      },
+    ],
+  });
+}
+
+module.exports = { handleMessage, handleLiffOrder };
