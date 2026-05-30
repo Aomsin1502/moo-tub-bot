@@ -133,7 +133,7 @@ async function getOrdersByUserId(userId) {
     });
     const rows = res.data.values || [];
     const PENDING = new Set(['รอยืนยัน', 'รอแพค', 'รอส่ง']);
-    const all = rows
+    return rows
       .filter(row => row[3] === userId)
       .map(row => ({
         orderId:    row[1] || '',
@@ -144,12 +144,8 @@ async function getOrdersByUserId(userId) {
         status:     row[7] || '',
         trackingNo: row[8] || '',
       }))
-      .sort((a, b) => b.orderId.localeCompare(a.orderId));
-    // เอา pending ทั้งหมด + จัดส่งแล้วล่าสุด 1 รายการ จำกัดรวมไม่เกิน 3
-    const pending  = all.filter(o => PENDING.has(o.status)).slice(0, 3);
-    const shipped  = all.filter(o => o.status === 'จัดส่งแล้ว').slice(0, 1);
-    const result   = [...pending, ...shipped].slice(0, 3);
-    return result;
+      .sort((a, b) => b.orderId.localeCompare(a.orderId)) // ล่าสุดก่อน
+      .slice(0, 3); // ย้อนหลัง 3 รายการ
   } catch (err) {
     console.error('[Sheets] getOrdersByUserId error:', err.message);
     return [];
