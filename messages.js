@@ -820,6 +820,106 @@ function pendingOrdersOverviewFlex(orders) {
   };
 }
 
+// Flex carousel สำหรับทุก status — ปุ่มเปลี่ยนตาม status
+function orderStatusFlex(orders, status) {
+  const CFG = {
+    'รอยืนยัน': {
+      color: '#E67E22', altText: 'รอยืนยัน',
+      btns: [
+        { label: '✅ ยืนยัน',  text: o => `ยืนยัน ${o.orderId}`,                  color: '#27AE60' },
+        { label: '❌ ยกเลิก', text: o => `ยกเลิกออเดอร์แอดมิน ${o.orderId}`,    color: null },
+      ],
+    },
+    'รอแพค': {
+      color: '#2980B9', altText: 'รอแพค',
+      btns: [
+        { label: '📫 พร้อมส่ง', text: o => `พร้อมส่ง ${o.orderId}`, color: '#1A5276' },
+        { label: '❌ ยกเลิก',  text: o => `ยกเลิกออเดอร์แอดมิน ${o.orderId}`, color: null },
+      ],
+    },
+    'รอส่ง': {
+      color: '#1A5276', altText: 'รอส่ง',
+      btns: [],
+    },
+  };
+  const cfg = CFG[status] || CFG['รอแพค'];
+  const safe = s => String(s || '-').substring(0, 300);
+
+  if (orders.length === 0) {
+    return {
+      type: 'flex', altText: `✅ ไม่มีออเดอร์${status}ครับ`,
+      contents: {
+        type: 'bubble',
+        body: { type: 'box', layout: 'vertical', paddingAll: 'xl',
+          contents: [{ type: 'text', text: `✅ ไม่มีออเดอร์${status}ครับ`, align: 'center', color: '#888888' }] },
+      },
+    };
+  }
+
+  const bubbles = orders.map(o => {
+    const items = o.items || [];
+    const itemRows = items.map(it => ({
+      type: 'box', layout: 'horizontal', paddingTop: 'xs',
+      contents: [
+        { type: 'text', text: safe(`• ${it.name}`), flex: 5, size: 'sm', color: '#333333', wrap: true },
+        { type: 'text', text: `×${it.qty || 1}`, flex: 1, size: 'sm', align: 'end', color: '#555555' },
+      ],
+    }));
+    const bodyItems = itemRows.length > 0 ? itemRows : [
+      { type: 'text', text: safe(o.itemsStr || o.items?.map(i=>`${i.name}×${i.qty}`).join(', ')), size: 'sm', color: '#333333', wrap: true },
+    ];
+
+    const footerBtns = cfg.btns.map(b => ({
+      type: 'button',
+      action: { type: 'message', label: b.label, text: b.text(o) },
+      style: b.color ? 'primary' : 'secondary',
+      ...(b.color ? { color: b.color } : {}),
+      height: 'sm',
+    }));
+
+    return {
+      type: 'bubble',
+      header: {
+        type: 'box', layout: 'vertical', backgroundColor: cfg.color, paddingAll: '14px',
+        contents: [
+          { type: 'text', text: safe(o.orderId), size: 'xs', color: 'rgba(255,255,255,0.7)' },
+          { type: 'text', text: safe(o.displayName), weight: 'bold', color: '#FFFFFF', size: 'lg', margin: 'xs' },
+        ],
+      },
+      body: {
+        type: 'box', layout: 'vertical', spacing: 'xs',
+        contents: [
+          { type: 'text', text: '🛍 รายการสินค้า', size: 'xs', weight: 'bold', color: '#888888' },
+          ...bodyItems,
+          { type: 'separator', margin: 'md' },
+          {
+            type: 'box', layout: 'horizontal', margin: 'sm',
+            contents: [
+              { type: 'text', text: '💰 รวม', flex: 2, size: 'sm', weight: 'bold', color: '#1a1a1a' },
+              { type: 'text', text: `${o.total || 0}฿`, flex: 1, size: 'sm', weight: 'bold', align: 'end', color: '#C0392B' },
+            ],
+          },
+          { type: 'separator', margin: 'md' },
+          { type: 'text', text: '📍 ที่อยู่จัดส่ง', size: 'xs', weight: 'bold', color: '#888888', margin: 'sm' },
+          { type: 'text', text: safe(o.address), size: 'sm', color: '#1A5276', wrap: true, margin: 'xs' },
+        ],
+      },
+      ...(footerBtns.length > 0 ? {
+        footer: {
+          type: 'box', layout: 'vertical', spacing: 'sm', paddingAll: 'sm',
+          contents: footerBtns,
+        },
+      } : {}),
+    };
+  });
+
+  return {
+    type: 'flex',
+    altText: `${cfg.altText} ${orders.length} ออเดอร์`,
+    contents: orders.length === 1 ? bubbles[0] : { type: 'carousel', contents: bubbles },
+  };
+}
+
 function packingListFlex(orders) {
   if (orders.length === 0) {
     return {
@@ -1131,6 +1231,7 @@ module.exports = {
   packingListFlex,
   pendingOrdersOverviewFlex,
   pendingOrdersCarouselFlex,
+  orderStatusFlex,
   QR_START,
   QR_ORDERING,
   QR_CONFIRM,

@@ -4,7 +4,7 @@ const { extractTrackingNumbers } = require('./visionService');
 const {
   welcomeFlex, cartFlex, paymentFlex,
   slipReceivedFlex, orderConfirmedFlex, shippedFlex,
-  menuFlex, statusFlex, cancelConfirmFlex, catalogFlex, qtyPickerFlex, adminOrderFlex, adminTrackingReviewFlex, pendingShipmentFlex, packingListFlex, pendingOrdersOverviewFlex, pendingOrdersCarouselFlex,
+  menuFlex, statusFlex, cancelConfirmFlex, catalogFlex, qtyPickerFlex, adminOrderFlex, adminTrackingReviewFlex, pendingShipmentFlex, packingListFlex, pendingOrdersOverviewFlex, pendingOrdersCarouselFlex, orderStatusFlex,
   QR_START, QR_ORDERING, QR_CONFIRM, QR_CANCEL, QR_MENU, adminQR,
 } = require('./messages');
 
@@ -291,18 +291,9 @@ async function handleMessage(event, client) {
     // ─── รอยืนยัน — รายการที่ยังไม่ได้ยืนยัน ────────────────────
     if (lower === 'รอยืนยัน') {
       await send(client, event.replyToken, { type: 'text', text: '⏳ กำลังดึงรายการรอยืนยัน...' });
-      getOrdersByStatus('รอยืนยัน').then(async orders => {
-        if (!orders.length) return client.pushMessage({ to: userId, messages: [{ type: 'text', text: '✅ ไม่มีออเดอร์รอยืนยันครับ' }] });
-        for (const o of orders.slice(0, 10)) {
-          await client.pushMessage({ to: userId, messages: [{
-            type: 'text',
-            text: `⏳ รอยืนยัน\n#${o.orderId}\n👤 ${o.displayName}  💰 ${o.total}฿\n📍 ${(o.address||'').slice(0,60)}`,
-            quickReply: { items: [
-              { type: 'action', action: { type: 'message', label: '✅ ยืนยัน', text: `ยืนยัน ${o.orderId}` } },
-              { type: 'action', action: { type: 'message', label: '❌ ยกเลิก', text: `ยกเลิกออเดอร์แอดมิน ${o.orderId}` } },
-            ]},
-          }] });
-        }
+      getOrdersByStatus('รอยืนยัน').then(orders => {
+        const enriched = orders.map(o => ({ ...o, itemsStr: o.itemsStr || '' }));
+        return client.pushMessage({ to: userId, messages: [orderStatusFlex(enriched, 'รอยืนยัน')] });
       }).catch(err => client.pushMessage({ to: userId, messages: [{ type: 'text', text: `❌ ${err.message}` }] }));
       return;
     }
@@ -310,19 +301,9 @@ async function handleMessage(event, client) {
     // ─── รอแพค — รายการที่รอแพคสินค้า ───────────────────────────
     if (['รอแพค', 'packing'].includes(lower)) {
       await send(client, event.replyToken, { type: 'text', text: '⏳ กำลังดึงข้อมูลจาก Sheets...' });
-      // อ่านทั้ง "รอแพค" และ "กำลัง Packing" (ข้อมูลเก่า backward compat)
-      getOrdersByStatuses(['รอแพค', 'กำลัง Packing']).then(async orders => {
-        if (!orders.length) return client.pushMessage({ to: userId, messages: [{ type: 'text', text: '✅ ไม่มีออเดอร์รอแพคครับ' }] });
-        for (const o of orders.slice(0, 10)) {
-          await client.pushMessage({ to: userId, messages: [{
-            type: 'text',
-            text: `📦 รอแพค\n#${o.orderId}\n👤 ${o.displayName}  💰 ${o.total}฿\n🛍 ${(o.itemsStr||'').slice(0,60)}\n📍 ${(o.address||'').slice(0,60)}`,
-            quickReply: { items: [
-              { type: 'action', action: { type: 'message', label: '✅ พร้อมส่ง', text: `พร้อมส่ง ${o.orderId}` } },
-              { type: 'action', action: { type: 'message', label: '❌ ยกเลิก', text: `ยกเลิกออเดอร์แอดมิน ${o.orderId}` } },
-            ]},
-          }] });
-        }
+      getOrdersByStatuses(['รอแพค', 'กำลัง Packing']).then(orders => {
+        const enriched = orders.map(o => ({ ...o, itemsStr: o.itemsStr || '' }));
+        return client.pushMessage({ to: userId, messages: [orderStatusFlex(enriched, 'รอแพค')] });
       }).catch(err => client.pushMessage({ to: userId, messages: [{ type: 'text', text: `❌ ${err.message}` }] }));
       return;
     }
@@ -395,6 +376,13 @@ async function handleMessage(event, client) {
 
     // รายการรอจัดส่ง → เริ่ม sequential tracking entry (อ่านจาก Sheets)
     if (['รอส่ง', 'รายการส่ง', 'รายการจัดส่ง', 'ค้างส่ง'].includes(lower)) {
+      // แสดง Flex ก่อน แล้วค่อย sequential entry
+      getOrdersByStatus('รอส่ง').then(preview => {
+        if (preview.length > 0) {
+          const enriched = preview.map(o => ({ ...o, itemsStr: o.itemsStr || '' }));
+          client.pushMessage({ to: userId, messages: [orderStatusFlex(enriched, 'รอส่ง')] }).catch(() => {});
+        }
+      }).catch(() => {});
       await send(client, event.replyToken, { type: 'text', text: '⏳ กำลังดึงรายการจาก Sheets...' });
       const sheetPending = await getOrdersByStatus('รอส่ง');
       const pending = sheetPending
