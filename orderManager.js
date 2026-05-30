@@ -151,11 +151,11 @@ async function handleMessage(event, client) {
           return;
         }
 
-        // ดึง orders สถานะ "กำลัง Packing" เรียงตาม orderId
-        const pendingOrders = Object.entries(orderStatus)
-          .filter(([, o]) => o.status === 'กำลัง Packing')
-          .sort(([a], [b]) => a.localeCompare(b))
-          .map(([orderId, o]) => ({ orderId, ...o }));
+        // ดึง orders "กำลัง Packing" จาก Sheets (ไม่หายถ้า restart)
+        const sheetPackingOrders = await getPackingOrders();
+        const pendingOrders = sheetPackingOrders
+          .sort((a, b) => a.orderId.localeCompare(b.orderId))
+          .map(o => ({ orderId: o.orderId, userId: o.userId, displayName: o.displayName, address: o.address, total: o.total }));
 
         // จับคู่ positional — ชื่อลูกค้ามาจากระบบ ไม่ใช่ OCR
         const pairs = [];
@@ -291,24 +291,28 @@ async function handleMessage(event, client) {
       return;
     }
 
-    // รายการรอจัดส่ง → เริ่ม sequential tracking entry
+    // รายการรอจัดส่ง → เริ่ม sequential tracking entry (อ่านจาก Sheets)
     if (['รายการส่ง', 'รายการจัดส่ง', 'ค้างส่ง'].includes(lower)) {
-      const pending = Object.entries(orderStatus)
-        .filter(([, o]) => o.status === 'กำลัง Packing')
-        .sort(([a], [b]) => a.localeCompare(b))
-        .map(([orderId, o]) => ({ orderId, displayName: o.displayName, total: o.total, userId: o.userId, address: o.address || '' }));
+      await send(client, event.replyToken, { type: 'text', text: '⏳ กำลังดึงรายการจาก Sheets...' });
+      const sheetPending = await getPackingOrders();
+      const pending = sheetPending
+        .sort((a, b) => a.orderId.localeCompare(b.orderId))
+        .map(o => ({ orderId: o.orderId, displayName: o.displayName, total: o.total, userId: o.userId, address: o.address || '' }));
 
       if (pending.length === 0) {
-        await send(client, event.replyToken, { type: 'text', text: '✅ ไม่มีออเดอร์รอจัดส่งครับ' });
+        await client.pushMessage({ to: userId, messages: [{ type: 'text', text: '✅ ไม่มีออเดอร์รอจัดส่งครับ' }] });
         return;
       }
 
       adminTrackingQueue[userId] = { orders: pending, index: 0, results: [] };
       const first = pending[0];
-      await send(client, event.replyToken, [
-        pendingShipmentFlex(pending),
-        { type: 'text', text: `กรอก tracking ทีละรายการครับ 👇\n\n📦 1/${pending.length} — ${first.displayName}\nพิมพ์เลข tracking:` },
-      ]);
+      await client.pushMessage({
+        to: userId,
+        messages: [
+          pendingShipmentFlex(pending),
+          { type: 'text', text: `กรอก tracking ทีละรายการครับ 👇\n\n📦 1/${pending.length} — ${first.displayName}\nพิมพ์เลข tracking:` },
+        ],
+      });
       return;
     }
 
