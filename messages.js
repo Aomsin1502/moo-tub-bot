@@ -688,7 +688,7 @@ function adminOrderFlex(orderId, cart, total, address, displayName) {
 function packingListFlex(orders) {
   if (orders.length === 0) {
     return {
-      type: 'flex', altText: '📦 ไม่มีออเดอร์รอ Packing',
+      type: 'flex', altText: '✅ ไม่มีออเดอร์รอ Packing',
       contents: {
         type: 'bubble',
         body: { type: 'box', layout: 'vertical', paddingAll: 'xl',
@@ -697,62 +697,48 @@ function packingListFlex(orders) {
     };
   }
 
-  const { calcShipping } = require('./menu');
+  const safe = s => String(s || '-').substring(0, 300);
 
   const bubbles = orders.map(o => {
     const items = o.items || [];
-    const { fee } = calcShipping(items);
-    const itemsTotal = items.reduce((s, i) => s + i.price * i.qty, 0);
-    const grandTotal = itemsTotal + fee;
-
     const itemRows = items.map(it => ({
       type: 'box', layout: 'horizontal', paddingTop: 'xs',
       contents: [
-        { type: 'text', text: `• ${it.name}`, flex: 5, size: 'sm', color: '#333333', wrap: true },
-        { type: 'text', text: `×${it.qty}`, flex: 1, size: 'sm', align: 'center', color: '#555555' },
-        { type: 'text', text: `${it.price * it.qty}฿`, flex: 2, size: 'sm', align: 'end', weight: 'bold', color: '#C0392B' },
+        { type: 'text', text: safe(`• ${it.name}`), flex: 5, size: 'sm', color: '#333333', wrap: true },
+        { type: 'text', text: `×${it.qty || 1}`, flex: 1, size: 'sm', align: 'end', color: '#555555' },
       ],
     }));
+
+    // ถ้าไม่มี items ให้แสดง raw string แทน
+    const bodyItems = itemRows.length > 0 ? itemRows : [
+      { type: 'text', text: safe(o.itemsStr), size: 'sm', color: '#333333', wrap: true },
+    ];
 
     return {
       type: 'bubble',
       header: {
         type: 'box', layout: 'vertical', backgroundColor: '#E67E22', paddingAll: '14px',
         contents: [
-          { type: 'text', text: o.orderId, size: 'xs', color: '#FDE8CC' },
-          { type: 'text', text: o.displayName, weight: 'bold', color: '#FFFFFF', size: 'lg', margin: 'xs' },
+          { type: 'text', text: safe(o.orderId), size: 'xs', color: '#FDE8CC' },
+          { type: 'text', text: safe(o.displayName), weight: 'bold', color: '#FFFFFF', size: 'lg', margin: 'xs' },
         ],
       },
       body: {
         type: 'box', layout: 'vertical', spacing: 'xs',
         contents: [
           { type: 'text', text: '🛍 รายการสินค้า', size: 'xs', weight: 'bold', color: '#888888' },
-          ...itemRows,
+          ...bodyItems,
           { type: 'separator', margin: 'md' },
           {
             type: 'box', layout: 'horizontal', margin: 'sm',
             contents: [
-              { type: 'text', text: 'ค่าสินค้า', flex: 3, size: 'xs', color: '#888888' },
-              { type: 'text', text: `${itemsTotal}฿`, flex: 1, size: 'xs', align: 'end', color: '#555555' },
-            ],
-          },
-          {
-            type: 'box', layout: 'horizontal',
-            contents: [
-              { type: 'text', text: 'ค่าส่ง', flex: 3, size: 'xs', color: '#888888' },
-              { type: 'text', text: `${fee}฿`, flex: 1, size: 'xs', align: 'end', color: '#555555' },
-            ],
-          },
-          {
-            type: 'box', layout: 'horizontal', marginTop: 'xs',
-            contents: [
-              { type: 'text', text: '💰 รวมทั้งหมด', flex: 3, size: 'sm', weight: 'bold', color: '#1a1a1a' },
-              { type: 'text', text: `${grandTotal}฿`, flex: 1, size: 'sm', weight: 'bold', align: 'end', color: '#C0392B' },
+              { type: 'text', text: '💰 รวม', flex: 2, size: 'sm', weight: 'bold', color: '#1a1a1a' },
+              { type: 'text', text: `${o.total || 0}฿`, flex: 1, size: 'sm', weight: 'bold', align: 'end', color: '#C0392B' },
             ],
           },
           { type: 'separator', margin: 'md' },
           { type: 'text', text: '📍 ที่อยู่จัดส่ง', size: 'xs', weight: 'bold', color: '#888888', margin: 'sm' },
-          { type: 'text', text: o.address || '-', size: 'sm', color: '#1A5276', wrap: true, margin: 'xs' },
+          { type: 'text', text: safe(o.address), size: 'sm', color: '#1A5276', wrap: true, margin: 'xs' },
         ],
       },
     };
