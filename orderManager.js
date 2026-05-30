@@ -1,5 +1,5 @@
 const { MENU, FLAT_ITEMS } = require('./menu');
-const { appendOrder, updateOrderStatus } = require('./sheetsService');
+const { appendOrder, updateOrderStatus, getPackingOrders } = require('./sheetsService');
 const { extractTrackingNumbers } = require('./visionService');
 const {
   welcomeFlex, cartFlex, paymentFlex,
@@ -259,16 +259,29 @@ async function handleMessage(event, client) {
       return;
     }
 
-    // ดูรายการ Packing — สินค้า + ที่อยู่ ครบในการ์ดเดียว
+    // ดูรายการ Packing — อ่านจาก Sheets (ไม่หายถ้า restart)
     if (['packing', 'แพ็ค', 'แพ็คของ', 'จัดของ', 'ดูpacking'].includes(lower)) {
-      const orders = Object.entries(orderStatus)
-        .filter(([, o]) => o.status === 'กำลัง Packing')
-        .sort(([a], [b]) => a.localeCompare(b))
-        .map(([orderId, o]) => ({
-          orderId, displayName: o.displayName,
-          items: o.items || [], total: o.total, address: o.address || '',
-        }));
-      await send(client, event.replyToken, packingListFlex(orders));
+      await send(client, event.replyToken, { type: 'text', text: '⏳ กำลังดึงข้อมูลจาก Sheets...' });
+      try {
+        const sheetOrders = await getPackingOrders();
+        const { FLAT_ITEMS } = require('./menu');
+        const orders = sheetOrders.map(o => {
+          // parse items string "หมูทุบ 130gx2, หมูสวรรค์ 350gx1"
+          const items = (o.itemsStr || '').split(',').map(s => {
+            const m = s.trim().match(/^(.+?)x(\d+)$/i);
+            if (!m) return null;
+            const name = m[1].trim();
+            const qty  = parseInt(m[2]);
+            const found = FLAT_ITEMS.find(fi => fi.name === name);
+            return found ? { name, price: found.price, qty, subtotal: found.price * qty, weight: found.weight || 0 } : { name, price: 0, qty, subtotal: 0, weight: 0 };
+          }).filter(Boolean);
+          return { orderId: o.orderId, displayName: o.displayName, items, total: o.total, address: o.address };
+        });
+        await client.pushMessage({ to: userId, messages: [packingListFlex(orders)] });
+      } catch (err) {
+        console.error('[packing] error:', err.message);
+        await client.pushMessage({ to: userId, messages: [{ type: 'text', text: `❌ เกิดข้อผิดพลาด: ${err.message}` }] });
+      }
       return;
     }
 

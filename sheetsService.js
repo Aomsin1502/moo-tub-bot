@@ -66,4 +66,31 @@ async function updateOrderStatus(orderId, status, trackingNo = '') {
   }
 }
 
-module.exports = { appendOrder, updateOrderStatus };
+// อ่านออเดอร์ที่สถานะ "กำลัง Packing" จาก Sheets
+async function getPackingOrders() {
+  const sheets = await getSheets();
+  if (!sheets) return [];
+  try {
+    const res = await sheets.spreadsheets.values.get({
+      spreadsheetId: process.env.GOOGLE_SHEET_ID,
+      range: 'ออเดอร์!A:I',
+    });
+    const rows = res.data.values || [];
+    return rows
+      .filter(row => row[7] === 'กำลัง Packing')
+      .map(row => ({
+        orderId:     row[1] || '',
+        displayName: row[2] || '',
+        userId:      row[3] || '',
+        itemsStr:    row[4] || '',
+        total:       Number(row[5]) || 0,
+        address:     row[6] || '',
+        status:      row[7] || '',
+      }));
+  } catch (err) {
+    console.error('[Sheets] getPackingOrders error:', err.message);
+    return [];
+  }
+}
+
+module.exports = { appendOrder, updateOrderStatus, getPackingOrders };
