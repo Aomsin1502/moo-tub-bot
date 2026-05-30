@@ -1,6 +1,6 @@
 const { MENU, FLAT_ITEMS } = require('./menu');
 const { appendOrder, updateOrderStatus } = require('./sheetsService');
-const { getLineImageBuffer, extractTrackingNumbers } = require('./visionService');
+const { extractTrackingNumbers } = require('./visionService');
 const {
   welcomeFlex, cartFlex, paymentFlex,
   slipReceivedFlex, orderConfirmedFlex, shippedFlex,
@@ -128,16 +128,16 @@ async function handleMessage(event, client) {
         type: 'text', text: '🔍 กำลังอ่าน tracking...',
       });
       try {
-        const imageBuffer = await getLineImageBuffer(event.message.id);
-        const { trackingNumbers, rawText } = await extractTrackingNumbers(imageBuffer);
+        const { trackingNumbers, rawText, imageSize, statusCode } = await extractTrackingNumbers(event.message.id);
 
         if (trackingNumbers.length === 0) {
           const preview = rawText.slice(0, 300) || '(ไม่มีข้อความ)';
+          const sizekb = (imageSize / 1024).toFixed(1);
           await client.pushMessage({
             to: ADMIN_USER_ID,
             messages: [{
               type: 'text',
-              text: `⚠️ อ่านเลข tracking ไม่พบครับ\n\nข้อความที่ OCR อ่านได้:\n────────────\n${preview}\n────────────\nลองถ่ายใหม่ให้เห็นเลขชัดๆ ครับ`,
+              text: `⚠️ อ่านเลข tracking ไม่พบครับ\n\n📊 debug:\n- HTTP: ${statusCode}\n- ขนาดรูป: ${sizekb} KB\n\nOCR อ่านได้:\n────────────\n${preview}\n────────────\nลองถ่ายใหม่ให้เห็นเลขชัดๆ ครับ`,
             }],
           });
           return;
