@@ -48,7 +48,7 @@ function menuFlex() {
         type: 'box', layout: 'vertical', backgroundColor: '#C0392B', paddingAll: '16px',
         contents: [
           { type: 'text', text: '🐷 ราคาสินค้า', weight: 'bold', color: '#FFFFFF', size: 'xl' },
-          { type: 'text', text: 'หมูทุบแม่บัวเผื่อน • ชุมพร', color: '#FFD0CC', size: 'sm', margin: 'xs' },
+          { type: 'text', text: 'หมูทุบแม่บัวเผื่อน', color: '#FFD0CC', size: 'sm', margin: 'xs' },
         ],
       },
       body: {
