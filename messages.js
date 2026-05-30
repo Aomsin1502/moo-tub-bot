@@ -353,7 +353,10 @@ function shippedFlex(orderId, trackingNo) {
                   backgroundColor: '#F4ECF7',
                   paddingAll: '12px',
                   contents: [
-                    { type: 'text', text: trackingNo, weight: 'bold', size: 'xl', align: 'center', color: '#7D3C98' },
+                    {
+              type: 'text', text: `${trackingNo}  📋`, weight: 'bold', size: 'xl', align: 'center', color: '#7D3C98',
+              action: { type: 'clipboard', label: 'คัดลอก', clipboardText: trackingNo },
+            },
                   ],
                 },
               ]
@@ -505,7 +508,10 @@ function statusFlex(orderId, orderData) {
             type: 'box', layout: 'vertical', backgroundColor: '#EBF5FB',
             paddingAll: '16px', cornerRadius: '8px', margin: 'sm',
             contents: [
-              { type: 'text', text: trackingNo, weight: 'bold', size: 'xxl', align: 'center', color: '#1A5276' },
+              {
+              type: 'text', text: `${trackingNo}  📋`, weight: 'bold', size: 'xxl', align: 'center', color: '#1A5276',
+              action: { type: 'clipboard', label: 'คัดลอก', clipboardText: trackingNo },
+            },
             ],
           },
           { type: 'text', text: 'กดปุ่มด้านล่างเพื่อติดตามพัสดุได้เลยครับ 📦', size: 'xs', color: '#888888', align: 'center', margin: 'sm', wrap: true },
@@ -707,9 +713,10 @@ function adminTrackingReviewFlex(pairs, unpairedTrackings, unpairedOrders) {
         },
         {
           type: 'box', layout: 'horizontal', margin: 'xs',
+          action: { type: 'clipboard', label: 'คัดลอก', clipboardText: pair.trackingNo },
           contents: [
             { type: 'text', text: '    ', flex: 0, size: 'xs' },
-            { type: 'text', text: '📦 ' + pair.trackingNo, flex: 1, size: 'sm', color: '#7D3C98', weight: 'bold', margin: 'sm' },
+            { type: 'text', text: `📦 ${pair.trackingNo}  📋`, flex: 1, size: 'sm', color: '#7D3C98', weight: 'bold', margin: 'sm' },
           ],
         },
       ],
