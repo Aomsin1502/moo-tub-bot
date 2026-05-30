@@ -4,7 +4,7 @@ const { extractTrackingNumbers } = require('./visionService');
 const {
   welcomeFlex, cartFlex, paymentFlex,
   slipReceivedFlex, orderConfirmedFlex, shippedFlex,
-  menuFlex, statusFlex, cancelConfirmFlex, catalogFlex, qtyPickerFlex, adminOrderFlex, adminTrackingReviewFlex, pendingShipmentFlex, packingListFlex, pendingOrdersOverviewFlex,
+  menuFlex, statusFlex, cancelConfirmFlex, catalogFlex, qtyPickerFlex, adminOrderFlex, adminTrackingReviewFlex, pendingShipmentFlex, packingListFlex, pendingOrdersOverviewFlex, pendingOrdersCarouselFlex,
   QR_START, QR_ORDERING, QR_CONFIRM, QR_CANCEL, QR_MENU, adminQR,
 } = require('./messages');
 
@@ -294,21 +294,31 @@ async function handleMessage(event, client) {
         if (orders.length === 0) {
           return client.pushMessage({ to: userId, messages: [{ type: 'text', text: '✅ ไม่มีออเดอร์รอดำเนินการครับ' }] });
         }
-        const ICONS = { 'รอยืนยัน': '⏳', 'กำลัง Packing': '📦', 'รอส่ง': '📫' };
-        const byStatus = {};
-        orders.forEach(o => { if (!byStatus[o.status]) byStatus[o.status] = []; byStatus[o.status].push(o); });
-        let text = `📋 ออเดอร์รอดำเนินการ (${orders.length} รายการ)\n`;
-        ['รอยืนยัน', 'กำลัง Packing', 'รอส่ง'].forEach(s => {
-          const list = byStatus[s] || [];
-          if (!list.length) return;
-          text += `\n${ICONS[s]} ${s} (${list.length})\n`;
-          list.forEach(o => { text += `  • ${o.displayName}  ${o.total}฿\n`; });
-        });
-        return client.pushMessage({ to: userId, messages: [{ type: 'text', text: text.trim() }] });
+        const msg = pendingOrdersCarouselFlex(orders);
+        const msgs = [msg];
+        return client.pushMessage({ to: userId, messages: msgs });
       }).catch(err => {
         console.error('[orders]', err.message);
         client.pushMessage({ to: userId, messages: [{ type: 'text', text: `❌ error: ${err.message}` }] });
       });
+      return;
+    }
+
+    // ยกเลิกออเดอร์โดย admin (ไม่ต้องรอลูกค้า)
+    const adminCancelMatch = text.match(/^ยกเลิกออเดอร์แอดมิน\s+(ORD\S+)/i);
+    if (adminCancelMatch) {
+      const orderId = adminCancelMatch[1].toUpperCase();
+      await updateOrderStatus(orderId, 'ยกเลิก');
+      if (orderStatus[orderId]) {
+        const custId = orderStatus[orderId].userId;
+        orderStatus[orderId].status = 'ยกเลิก';
+        if (custId) {
+          try {
+            await client.pushMessage({ to: custId, messages: [{ type: 'text', text: `❌ ออเดอร์ #${orderId} ถูกยกเลิกแล้วครับ\nหากมีข้อสงสัย กรุณาติดต่อร้านโดยตรงครับ 🙏` }] });
+          } catch (e) {}
+        }
+      }
+      await send(client, event.replyToken, { type: 'text', text: `✅ ยกเลิก ${orderId} แล้วครับ\nอัปเดต Sheets เรียบร้อย` });
       return;
     }
 

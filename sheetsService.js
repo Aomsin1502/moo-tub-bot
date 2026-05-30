@@ -110,6 +110,7 @@ async function getOrdersByStatuses(statuses) {
         orderId:     row[1] || '',
         displayName: row[2] || '',
         userId:      row[3] || '',
+        itemsStr:    row[4] || '',
         total:       Number(row[5]) || 0,
         address:     row[6] || '',
         status:      row[7] || '',

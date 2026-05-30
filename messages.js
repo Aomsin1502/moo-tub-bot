@@ -686,6 +686,74 @@ function adminOrderFlex(orderId, cart, total, address, displayName) {
   };
 }
 
+function pendingOrdersCarouselFlex(orders) {
+  const safe = s => String(s || '-').substring(0, 200);
+  const STATUS_HDR = {
+    'รอยืนยัน':      { color: '#E67E22', icon: '⏳' },
+    'กำลัง Packing': { color: '#2980B9', icon: '📦' },
+    'รอส่ง':         { color: '#1A5276', icon: '📫' },
+  };
+
+  // เรียง: รอยืนยัน → กำลัง Packing → รอส่ง
+  const ORDER = ['รอยืนยัน', 'กำลัง Packing', 'รอส่ง'];
+  const sorted = [...orders].sort((a, b) => ORDER.indexOf(a.status) - ORDER.indexOf(b.status));
+  const bubbles = sorted.slice(0, 12).map(o => {
+    const hdr = STATUS_HDR[o.status] || { color: '#888', icon: '📋' };
+    const addrShort = safe(o.address).slice(0, 50);
+    const itemsShort = safe(o.itemsStr).slice(0, 60);
+
+    // footer buttons ตาม status
+    const footerBtns = [];
+    if (o.status === 'รอยืนยัน') {
+      footerBtns.push({ type: 'button', action: { type: 'message', label: '✅ ยืนยัน', text: `ยืนยัน ${o.orderId}` }, style: 'primary', color: '#27AE60', height: 'sm' });
+      footerBtns.push({ type: 'button', action: { type: 'message', label: '❌ ยกเลิก', text: `ยกเลิกออเดอร์แอดมิน ${o.orderId}` }, style: 'secondary', height: 'sm' });
+    } else if (o.status === 'กำลัง Packing') {
+      footerBtns.push({ type: 'button', action: { type: 'message', label: '📫 พร้อมส่ง', text: `พร้อมส่ง ${o.orderId}` }, style: 'primary', color: '#1A5276', height: 'sm' });
+      footerBtns.push({ type: 'button', action: { type: 'message', label: '❌ ยกเลิก', text: `ยกเลิกออเดอร์แอดมิน ${o.orderId}` }, style: 'secondary', height: 'sm' });
+    }
+
+    return {
+      type: 'bubble',
+      header: {
+        type: 'box', layout: 'vertical', backgroundColor: hdr.color, paddingAll: '12px',
+        contents: [
+          { type: 'text', text: `${hdr.icon} ${o.status}`, size: 'xs', color: 'rgba(255,255,255,0.8)' },
+          { type: 'text', text: o.orderId, size: 'sm', weight: 'bold', color: '#FFFFFF', margin: 'xs' },
+        ],
+      },
+      body: {
+        type: 'box', layout: 'vertical', spacing: 'xs', paddingAll: 'md',
+        contents: [
+          { type: 'box', layout: 'horizontal', contents: [
+            { type: 'text', text: '👤', flex: 0, size: 'sm' },
+            { type: 'text', text: safe(o.displayName), flex: 1, size: 'sm', weight: 'bold', margin: 'sm', wrap: true },
+            { type: 'text', text: `${o.total}฿`, flex: 0, size: 'sm', color: '#C0392B', weight: 'bold' },
+          ]},
+          { type: 'text', text: `🛍 ${itemsShort}`, size: 'xs', color: '#555', wrap: true, margin: 'xs' },
+          { type: 'separator', margin: 'sm' },
+          { type: 'text', text: `📍 ${addrShort}`, size: 'xs', color: '#888', wrap: true, margin: 'xs' },
+        ],
+      },
+      ...(footerBtns.length > 0 ? {
+        footer: {
+          type: 'box', layout: 'vertical', spacing: 'sm', paddingAll: 'md',
+          contents: footerBtns,
+        },
+      } : {}),
+    };
+  });
+
+  if (bubbles.length === 0) {
+    return { type: 'text', text: '✅ ไม่มีออเดอร์รอดำเนินการครับ' };
+  }
+
+  return {
+    type: 'flex',
+    altText: `📋 ออเดอร์รอดำเนินการ ${orders.length} รายการ`,
+    contents: bubbles.length === 1 ? bubbles[0] : { type: 'carousel', contents: bubbles },
+  };
+}
+
 function pendingOrdersOverviewFlex(orders) {
   if (orders.length === 0) {
     return {
@@ -1062,6 +1130,7 @@ module.exports = {
   pendingShipmentFlex,
   packingListFlex,
   pendingOrdersOverviewFlex,
+  pendingOrdersCarouselFlex,
   QR_START,
   QR_ORDERING,
   QR_CONFIRM,
