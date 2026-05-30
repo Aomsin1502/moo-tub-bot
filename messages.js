@@ -696,46 +696,65 @@ function pendingShipmentFlex(orders) {
   };
 }
 
-function adminTrackingReviewFlex(pairs, unpairedTrackings, unpairedOrders) {
+function adminTrackingReviewFlex(pairs, unpairedTrackings, unpairedOrders, trackingList = []) {
   const bodyContents = [];
 
-  pairs.forEach((pair, i) => {
-    if (i > 0) bodyContents.push({ type: 'separator', margin: 'sm' });
-    bodyContents.push({
-      type: 'box', layout: 'vertical', paddingTop: 'sm', paddingBottom: 'sm',
-      contents: [
-        {
-          type: 'box', layout: 'horizontal',
-          contents: [
-            { type: 'text', text: `${i + 1}.`, flex: 0, size: 'sm', weight: 'bold', color: '#7D3C98' },
-            { type: 'text', text: pair.displayName, flex: 1, size: 'sm', weight: 'bold', color: '#1a1a1a', margin: 'sm', wrap: true },
-          ],
-        },
-        {
-          type: 'box', layout: 'horizontal', margin: 'xs',
-          action: { type: 'clipboard', label: 'คัดลอก', clipboardText: pair.trackingNo },
-          contents: [
-            { type: 'text', text: '    ', flex: 0, size: 'xs' },
-            { type: 'text', text: `📦 ${pair.trackingNo}  📋`, flex: 1, size: 'sm', color: '#7D3C98', weight: 'bold', margin: 'sm' },
-          ],
-        },
-      ],
+  // แสดง tracking list แบบมีหมายเลข (สำหรับเรียงลำดับใหม่)
+  if (trackingList.length > 0) {
+    bodyContents.push({ type: 'text', text: '📦 Tracking ที่อ่านได้:', size: 'xs', weight: 'bold', color: '#555555' });
+    trackingList.forEach((t, i) => {
+      bodyContents.push({
+        type: 'box', layout: 'horizontal', paddingTop: 'xs',
+        action: { type: 'clipboard', label: 'คัดลอก', clipboardText: t },
+        contents: [
+          { type: 'text', text: `${i + 1}.`, flex: 0, size: 'xs', color: '#7D3C98', weight: 'bold' },
+          { type: 'text', text: `${t}  📋`, flex: 1, size: 'xs', color: '#7D3C98', weight: 'bold', margin: 'sm' },
+        ],
+      });
     });
-  });
+    bodyContents.push({ type: 'separator', margin: 'md' });
+  }
+
+  // แสดงจับคู่ปัจจุบัน
+  if (pairs.length > 0) {
+    bodyContents.push({ type: 'text', text: '👤 จับคู่กับออเดอร์:', size: 'xs', weight: 'bold', color: '#555555', margin: 'sm' });
+    pairs.forEach((pair, i) => {
+      const letter = String.fromCharCode(65 + i); // A, B, C...
+      const trackIdx = trackingList.indexOf(pair.trackingNo) + 1;
+      bodyContents.push({
+        type: 'box', layout: 'horizontal', paddingTop: 'xs', paddingBottom: 'xs',
+        contents: [
+          { type: 'text', text: `${letter}.`, flex: 0, size: 'sm', weight: 'bold', color: '#27AE60' },
+          { type: 'text', text: pair.displayName, flex: 3, size: 'sm', color: '#1a1a1a', margin: 'sm', wrap: true },
+          { type: 'text', text: `← #${trackIdx}`, flex: 1, size: 'xs', color: '#7D3C98', align: 'end', gravity: 'center' },
+        ],
+      });
+    });
+  }
 
   if (unpairedTrackings.length > 0) {
-    bodyContents.push({ type: 'separator', margin: 'md' });
-    bodyContents.push({ type: 'text', text: '❓ จับคู่ไม่ได้:', size: 'xs', color: '#E74C3C', weight: 'bold' });
+    bodyContents.push({ type: 'separator', margin: 'sm' });
+    bodyContents.push({ type: 'text', text: '❓ tracking เกิน:', size: 'xs', color: '#E74C3C' });
     unpairedTrackings.forEach(t => {
       bodyContents.push({ type: 'text', text: t, size: 'xs', color: '#E74C3C' });
     });
   }
 
   if (unpairedOrders.length > 0) {
-    bodyContents.push({ type: 'separator', margin: 'md' });
-    bodyContents.push({ type: 'text', text: '⚠️ ออเดอร์ไม่มี tracking:', size: 'xs', color: '#E67E22', weight: 'bold' });
+    bodyContents.push({ type: 'separator', margin: 'sm' });
+    bodyContents.push({ type: 'text', text: '⚠️ ออเดอร์ไม่มี tracking:', size: 'xs', color: '#E67E22' });
     unpairedOrders.forEach(o => {
-      bodyContents.push({ type: 'text', text: `${o.orderId} — ${o.displayName}`, size: 'xs', color: '#E67E22', wrap: true });
+      bodyContents.push({ type: 'text', text: `${o.displayName}`, size: 'xs', color: '#E67E22' });
+    });
+  }
+
+  // คำแนะนำเรียงลำดับใหม่
+  if (trackingList.length > 1 && pairs.length > 0) {
+    bodyContents.push({ type: 'separator', margin: 'md' });
+    bodyContents.push({
+      type: 'text',
+      text: `ลำดับผิด? พิมพ์เลขใหม่ เช่น: 2 1 3\n(tracking ที่ไหนไปออเดอร์ A B C)`,
+      size: 'xs', color: '#888888', wrap: true, margin: 'sm',
     });
   }
 
@@ -748,7 +767,7 @@ function adminTrackingReviewFlex(pairs, unpairedTrackings, unpairedOrders) {
         type: 'box', layout: 'vertical', backgroundColor: '#7D3C98', paddingAll: '16px',
         contents: [
           { type: 'text', text: '📋 ทบทวนก่อนยืนยัน', weight: 'bold', color: '#FFFFFF', size: 'lg' },
-          { type: 'text', text: `${pairs.length} รายการ — ตรวจสอบชื่อและเลขพัสดุ`, color: '#D7BDE2', size: 'xs', wrap: true },
+          { type: 'text', text: `${pairs.length} รายการ`, color: '#D7BDE2', size: 'xs' },
         ],
       },
       body: {

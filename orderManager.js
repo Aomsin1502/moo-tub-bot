@@ -29,6 +29,10 @@ const adminPendingMatches = {};
 // adminUserId → { orders: [...], index: 0, results: [...] }
 const adminTrackingQueue = {};
 
+// เก็บ tracking list + order list สำหรับให้ admin เรียงลำดับใหม่
+// adminUserId → { trackings: [...], orders: [...] }
+const adminPendingData = {};
+
 function getState(userId) {
   if (!userStates[userId]) {
     userStates[userId] = { state: 'idle', cart: [], orderId: null, displayName: '', address: '', name: '', addressLine: '', phone: '', cancelPending: null, pendingItem: null, pendingQty: 1, prevState: null };
@@ -165,10 +169,11 @@ async function handleMessage(event, client) {
         const unpairedOrders    = pendingOrders.slice(trackingNumbers.length);
 
         adminPendingMatches[userId] = pairs;
+        adminPendingData[userId] = { trackings: trackingNumbers, orders: pendingOrders };
 
         await client.pushMessage({
           to: ADMIN_USER_ID,
-          messages: [adminTrackingReviewFlex(pairs, unpairedTrackings, unpairedOrders)],
+          messages: [adminTrackingReviewFlex(pairs, unpairedTrackings, unpairedOrders, trackingNumbers)],
         });
       } catch (err) {
         console.error('[Admin OCR error]', err.message);
@@ -291,6 +296,30 @@ async function handleMessage(event, client) {
         });
       }
       return;
+    }
+
+    // เรียงลำดับใหม่ — admin พิมพ์ "2 1 3" เพื่อสลับ tracking
+    const reorderMatch = text.trim().match(/^[\d\s]+$/);
+    if (reorderMatch && adminPendingData[userId] && adminPendingMatches[userId]?.length > 0) {
+      const { trackings, orders } = adminPendingData[userId];
+      const indices = text.trim().split(/\s+/).map(n => parseInt(n) - 1);
+      if (indices.length === orders.length && indices.every(i => i >= 0 && i < trackings.length)) {
+        const newPairs = orders.map((o, i) => ({
+          orderId: o.orderId, trackingNo: trackings[indices[i]],
+          userId: o.userId, displayName: o.displayName,
+        }));
+        adminPendingMatches[userId] = newPairs;
+        await send(client, event.replyToken,
+          adminTrackingReviewFlex(newPairs, [], [], trackings)
+        );
+        return;
+      } else {
+        await send(client, event.replyToken, {
+          type: 'text',
+          text: `⚠️ ใส่ตัวเลข ${orders.length} ตัว ห่างด้วยช่องว่าง\nเช่น: 2 1 3`,
+        });
+        return;
+      }
     }
 
     // ยืนยัน tracking batch (หลัง OCR review)
