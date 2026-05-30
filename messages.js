@@ -634,18 +634,29 @@ function adminTrackingReviewFlex(pairs, unpairedTrackings, unpairedOrders) {
   pairs.forEach((pair, i) => {
     if (i > 0) bodyContents.push({ type: 'separator', margin: 'sm' });
     bodyContents.push({
-      type: 'box', layout: 'vertical', paddingTop: 'xs', paddingBottom: 'xs',
+      type: 'box', layout: 'vertical', paddingTop: 'sm', paddingBottom: 'sm',
       contents: [
-        { type: 'text', text: pair.trackingNo, size: 'sm', weight: 'bold', color: '#7D3C98', wrap: true },
-        { type: 'text', text: `✅  ${pair.displayName}`, size: 'sm', color: '#27AE60' },
-        { type: 'text', text: `     ${pair.orderId}`, size: 'xs', color: '#888888' },
+        {
+          type: 'box', layout: 'horizontal',
+          contents: [
+            { type: 'text', text: `${i + 1}.`, flex: 0, size: 'sm', weight: 'bold', color: '#7D3C98' },
+            { type: 'text', text: pair.displayName, flex: 1, size: 'sm', weight: 'bold', color: '#1a1a1a', margin: 'sm', wrap: true },
+          ],
+        },
+        {
+          type: 'box', layout: 'horizontal', margin: 'xs',
+          contents: [
+            { type: 'text', text: '    ', flex: 0, size: 'xs' },
+            { type: 'text', text: '📦 ' + pair.trackingNo, flex: 1, size: 'sm', color: '#7D3C98', weight: 'bold', margin: 'sm' },
+          ],
+        },
       ],
     });
   });
 
   if (unpairedTrackings.length > 0) {
     bodyContents.push({ type: 'separator', margin: 'md' });
-    bodyContents.push({ type: 'text', text: '❓ อ่านได้แต่จับคู่ไม่ได้:', size: 'xs', color: '#E74C3C', weight: 'bold' });
+    bodyContents.push({ type: 'text', text: '❓ จับคู่ไม่ได้:', size: 'xs', color: '#E74C3C', weight: 'bold' });
     unpairedTrackings.forEach(t => {
       bodyContents.push({ type: 'text', text: t, size: 'xs', color: '#E74C3C' });
     });
@@ -653,7 +664,7 @@ function adminTrackingReviewFlex(pairs, unpairedTrackings, unpairedOrders) {
 
   if (unpairedOrders.length > 0) {
     bodyContents.push({ type: 'separator', margin: 'md' });
-    bodyContents.push({ type: 'text', text: '⚠️ ออเดอร์ที่ไม่มี tracking:', size: 'xs', color: '#E67E22', weight: 'bold' });
+    bodyContents.push({ type: 'text', text: '⚠️ ออเดอร์ไม่มี tracking:', size: 'xs', color: '#E67E22', weight: 'bold' });
     unpairedOrders.forEach(o => {
       bodyContents.push({ type: 'text', text: `${o.orderId} — ${o.displayName}`, size: 'xs', color: '#E67E22', wrap: true });
     });
@@ -661,24 +672,20 @@ function adminTrackingReviewFlex(pairs, unpairedTrackings, unpairedOrders) {
 
   return {
     type: 'flex',
-    altText: `📋 พบ ${pairs.length + unpairedTrackings.length} tracking — รอยืนยัน`,
+    altText: `📋 ทบทวน ${pairs.length} รายการ — รอยืนยัน`,
     contents: {
       type: 'bubble',
       header: {
         type: 'box', layout: 'vertical', backgroundColor: '#7D3C98', paddingAll: '16px',
         contents: [
-          { type: 'text', text: '📋 ทบทวน tracking', weight: 'bold', color: '#FFFFFF', size: 'lg' },
-          {
-            type: 'text',
-            text: `พบ ${pairs.length + unpairedTrackings.length} หมายเลข  จับคู่ได้ ${pairs.length} ออเดอร์`,
-            color: '#D7BDE2', size: 'xs', wrap: true,
-          },
+          { type: 'text', text: '📋 ทบทวนก่อนยืนยัน', weight: 'bold', color: '#FFFFFF', size: 'lg' },
+          { type: 'text', text: `${pairs.length} รายการ — ตรวจสอบชื่อและเลขพัสดุ`, color: '#D7BDE2', size: 'xs', wrap: true },
         ],
       },
       body: {
-        type: 'box', layout: 'vertical', spacing: 'sm',
+        type: 'box', layout: 'vertical', spacing: 'none',
         contents: bodyContents.length > 0 ? bodyContents : [
-          { type: 'text', text: 'ไม่พบ tracking ที่จับคู่ได้', color: '#888888', align: 'center' },
+          { type: 'text', text: 'ไม่พบรายการที่จับคู่ได้', color: '#888888', align: 'center' },
         ],
       },
       ...(pairs.length > 0 ? {
