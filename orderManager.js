@@ -393,7 +393,7 @@ async function handleMessage(event, client) {
     // (รอแพค command อยู่ด้านบนแล้ว)
 
     // รายการรอจัดส่ง → เริ่ม sequential tracking entry (อ่านจาก Sheets)
-    if (['รายการส่ง', 'รายการจัดส่ง', 'ค้างส่ง'].includes(lower)) {
+    if (['รอส่ง', 'รายการส่ง', 'รายการจัดส่ง', 'ค้างส่ง'].includes(lower)) {
       await send(client, event.replyToken, { type: 'text', text: '⏳ กำลังดึงรายการจาก Sheets...' });
       const sheetPending = await getOrdersByStatus('รอส่ง');
       const pending = sheetPending
