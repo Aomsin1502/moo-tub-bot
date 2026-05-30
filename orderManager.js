@@ -295,8 +295,12 @@ async function handleMessage(event, client) {
         if (!orders.length) return client.pushMessage({ to: userId, messages: [{ type: 'text', text: '✅ ไม่มีออเดอร์รอยืนยันครับ' }] });
         for (const o of orders.slice(0, 10)) {
           await client.pushMessage({ to: userId, messages: [{
-            ...orderStatusFlex([{ ...o, itemsStr: o.itemsStr || '' }], 'รอยืนยัน'),
-            quickReply: { items: [{ type: 'action', action: { type: 'message', label: '❌ ยกเลิก', text: `ยกเลิกออเดอร์แอดมิน ${o.orderId}` } }] },
+            type: 'text',
+            text: `⏳ รอยืนยัน\n#${o.orderId}\n👤 ${o.displayName}  💰 ${o.total}฿\n🛍 ${(o.itemsStr||'').slice(0,80)}\n📍 ${(o.address||'').slice(0,80)}`,
+            quickReply: { items: [
+              { type: 'action', action: { type: 'message', label: '✅ ยืนยัน', text: `ยืนยัน ${o.orderId}` } },
+              { type: 'action', action: { type: 'message', label: '❌ ยกเลิก', text: `ยกเลิกออเดอร์แอดมิน ${o.orderId}` } },
+            ]},
           }] });
         }
       }).catch(err => client.pushMessage({ to: userId, messages: [{ type: 'text', text: `❌ ${err.message}` }] }));
@@ -310,8 +314,12 @@ async function handleMessage(event, client) {
         if (!orders.length) return client.pushMessage({ to: userId, messages: [{ type: 'text', text: '✅ ไม่มีออเดอร์รอแพคครับ' }] });
         for (const o of orders.slice(0, 10)) {
           await client.pushMessage({ to: userId, messages: [{
-            ...orderStatusFlex([{ ...o, itemsStr: o.itemsStr || '' }], 'รอแพค'),
-            quickReply: { items: [{ type: 'action', action: { type: 'message', label: '❌ ยกเลิก', text: `ยกเลิกออเดอร์แอดมิน ${o.orderId}` } }] },
+            type: 'text',
+            text: `📦 รอแพค\n#${o.orderId}\n👤 ${o.displayName}  💰 ${o.total}฿\n🛍 ${(o.itemsStr||'').slice(0,80)}\n📍 ${(o.address||'').slice(0,80)}`,
+            quickReply: { items: [
+              { type: 'action', action: { type: 'message', label: '✅ พร้อมส่ง', text: `พร้อมส่ง ${o.orderId}` } },
+              { type: 'action', action: { type: 'message', label: '❌ ยกเลิก', text: `ยกเลิกออเดอร์แอดมิน ${o.orderId}` } },
+            ]},
           }] });
         }
       }).catch(err => client.pushMessage({ to: userId, messages: [{ type: 'text', text: `❌ ${err.message}` }] }));
