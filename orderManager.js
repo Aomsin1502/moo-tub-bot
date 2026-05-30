@@ -169,7 +169,7 @@ async function handleMessage(event, client) {
         const unpairedOrders    = pendingOrders.slice(trackingNumbers.length);
 
         adminPendingMatches[userId] = pairs;
-        adminPendingData[userId] = { trackings: trackingNumbers, orders: pendingOrders };
+        adminPendingData[userId] = { trackings: trackingNumbers, allOrders: pendingOrders };
 
         await client.pushMessage({
           to: ADMIN_USER_ID,
@@ -349,27 +349,55 @@ async function handleMessage(event, client) {
     }
 
     // เรียงลำดับใหม่ — admin พิมพ์ "2 1 3" เพื่อสลับ tracking
-    const reorderMatch = text.trim().match(/^[\d\s]+$/);
-    if (reorderMatch && adminPendingData[userId] && adminPendingMatches[userId]?.length > 0) {
-      const { trackings, orders } = adminPendingData[userId];
-      const indices = text.trim().split(/\s+/).map(n => parseInt(n) - 1);
-      if (indices.length === orders.length && indices.every(i => i >= 0 && i < trackings.length)) {
-        const newPairs = orders.map((o, i) => ({
-          orderId: o.orderId, trackingNo: trackings[indices[i]],
-          userId: o.userId, displayName: o.displayName, address: o.address || '',
-        }));
-        adminPendingMatches[userId] = newPairs;
-        await send(client, event.replyToken,
-          adminTrackingReviewFlex(newPairs, [], [], trackings)
-        );
-        return;
-      } else {
+    // ─── Letter-based tracking assignment: "D B F" ──────────────
+    const letterMatch = text.trim().match(/^[A-Za-z](\s+[A-Za-z])*$/);
+    if (letterMatch && adminPendingData[userId] && adminPendingMatches[userId] !== undefined) {
+      const { trackings, allOrders } = adminPendingData[userId];
+      const letters = text.trim().toUpperCase().split(/\s+/);
+      const maxIdx = allOrders.length;
+      const maxLetter = String.fromCharCode(64 + maxIdx);
+
+      // Validate 1: จำนวนต้องตรงกับ tracking
+      if (letters.length !== trackings.length) {
         await send(client, event.replyToken, {
           type: 'text',
-          text: `⚠️ ใส่ตัวเลข ${orders.length} ตัว ห่างด้วยช่องว่าง\nเช่น: 2 1 3`,
+          text: `⚠️ ต้องพิมพ์ ${trackings.length} ตัวอักษร (tracking มี ${trackings.length} ตัว)\nเช่น: ${Array.from({length: trackings.length}, (_, i) => String.fromCharCode(65+i)).join(' ')}`,
         });
         return;
       }
+
+      // Validate 2: ตัวอักษรต้องอยู่ในช่วง A-maxLetter
+      const invalid = letters.filter(l => l.charCodeAt(0) < 65 || l.charCodeAt(0) > 64 + maxIdx);
+      if (invalid.length > 0) {
+        await send(client, event.replyToken, {
+          type: 'text',
+          text: `⚠️ ตัวอักษร "${invalid.join(', ')}" ไม่ถูกต้อง\nใช้ได้ A–${maxLetter} (${maxIdx} ออเดอร์) เท่านั้นครับ`,
+        });
+        return;
+      }
+
+      // Validate 3: ห้ามซ้ำ
+      if (new Set(letters).size !== letters.length) {
+        await send(client, event.replyToken, {
+          type: 'text',
+          text: '⚠️ ตัวอักษรซ้ำกัน กรุณาใช้แต่ละตัวครั้งเดียวครับ',
+        });
+        return;
+      }
+
+      // สร้าง pairs ใหม่
+      const letterMap = {};
+      allOrders.forEach((o, i) => { letterMap[String.fromCharCode(65 + i)] = o; });
+      const newPairs = letters.map((letter, i) => {
+        const o = letterMap[letter];
+        return { orderId: o.orderId, trackingNo: trackings[i], userId: o.userId, displayName: o.displayName, address: o.address || '' };
+      });
+      const usedLetters = new Set(letters);
+      const newUnpaired = allOrders.filter((_, i) => !usedLetters.has(String.fromCharCode(65 + i)));
+
+      adminPendingMatches[userId] = newPairs;
+      await send(client, event.replyToken, adminTrackingReviewFlex(newPairs, [], newUnpaired, trackings));
+      return;
     }
 
     // ยืนยัน tracking batch (หลัง OCR review)

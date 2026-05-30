@@ -896,12 +896,14 @@ function adminTrackingReviewFlex(pairs, unpairedTrackings, unpairedOrders, track
     });
   }
 
-  // คำแนะนำเรียงลำดับใหม่
-  if (trackingList.length > 0 && pairs.length > 0) {
+  // คำแนะนำ letter-based assignment
+  if (trackingList.length > 0) {
+    const totalOrders = pairs.length + unpairedOrders.length;
+    const maxLetter = String.fromCharCode(64 + totalOrders);
     bodyContents.push({ type: 'separator', margin: 'md' });
     bodyContents.push({
       type: 'text',
-      text: `ลำดับผิด? พิมพ์เลขใหม่ เช่น: 2 1 3`,
+      text: `📝 จับคู่ผิด? พิมพ์ตัวอักษรตามลำดับ tracking\nเช่น: D B F\n(A–${maxLetter} = ออเดอร์ A ถึง ${maxLetter})`,
       size: 'xs', color: '#888888', wrap: true, margin: 'sm',
     });
   }
