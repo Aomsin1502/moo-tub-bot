@@ -259,32 +259,33 @@ async function handleMessage(event, client) {
       return;
     }
 
-    // ดูรายการ Packing — อ่านจาก Sheets (ไม่หายถ้า restart)
+    // ดูรายการ Packing — อ่านจาก Sheets
     if (['packing', 'แพ็ค', 'แพ็คของ', 'จัดของ', 'ดูpacking'].includes(lower)) {
-      try {
-        const sheetOrders = await getPackingOrders();
+      // ตอบทันทีก่อน (replyToken timeout 1 นาที)
+      await send(client, event.replyToken, { type: 'text', text: '⏳ กำลังดึงข้อมูล Packing...' });
+      // แล้วค่อย push ผลลัพธ์ (ไม่ขึ้นกับ replyToken)
+      getPackingOrders().then(sheetOrders => {
         if (sheetOrders.length === 0) {
-          await send(client, event.replyToken, { type: 'text', text: '✅ ไม่มีออเดอร์รอ Packing ครับ' });
-          return;
+          return client.pushMessage({ to: userId, messages: [{ type: 'text', text: '✅ ไม่มีออเดอร์รอ Packing ครับ' }] });
         }
-        // แปลง itemsStr → items array สำหรับ Flex
+        const { FLAT_ITEMS } = require('./menu');
         const orders = sheetOrders.map(o => {
           const items = (o.itemsStr || '').split(',').map(s => {
             const m = s.trim().match(/^(.+?)x(\d+)$/i);
             if (!m) return { name: s.trim(), price: 0, qty: 1, subtotal: 0, weight: 0 };
             const name = m[1].trim();
             const qty  = parseInt(m[2]) || 1;
-            const found = (require('./menu').FLAT_ITEMS || []).find(fi => fi.name === name);
+            const found = FLAT_ITEMS.find(fi => fi.name === name);
             const price = found ? found.price : 0;
             return { name, price, qty, subtotal: price * qty, weight: found ? (found.weight || 0) : 0 };
           });
           return { orderId: o.orderId, displayName: o.displayName, items, total: o.total, address: o.address };
         });
-        await send(client, event.replyToken, packingListFlex(orders));
-      } catch (err) {
+        return client.pushMessage({ to: userId, messages: [packingListFlex(orders)] });
+      }).catch(err => {
         console.error('[packing] error:', err.message);
-        await send(client, event.replyToken, { type: 'text', text: `❌ เกิดข้อผิดพลาด: ${err.message}` });
-      }
+        client.pushMessage({ to: userId, messages: [{ type: 'text', text: `❌ packing error: ${err.message}` }] });
+      });
       return;
     }
 
