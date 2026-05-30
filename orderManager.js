@@ -290,13 +290,36 @@ async function handleMessage(event, client) {
     // ออเดอร์รอดำเนินการทั้งหมด (รอยืนยัน + กำลัง Packing + รอส่ง)
     if (['ออเดอร์', 'orders', 'listorder', 'รายการออเดอร์', 'ดูออเดอร์'].includes(lower)) {
       await send(client, event.replyToken, { type: 'text', text: '⏳ กำลังดึงข้อมูล...' });
-      getOrdersByStatuses(['รอยืนยัน', 'กำลัง Packing', 'รอส่ง']).then(orders => {
+      getOrdersByStatuses(['รอยืนยัน', 'กำลัง Packing', 'รอส่ง']).then(async orders => {
         if (orders.length === 0) {
           return client.pushMessage({ to: userId, messages: [{ type: 'text', text: '✅ ไม่มีออเดอร์รอดำเนินการครับ' }] });
         }
-        const msg = pendingOrdersCarouselFlex(orders);
-        const msgs = [msg];
-        return client.pushMessage({ to: userId, messages: msgs });
+        const ICONS = { 'รอยืนยัน': '⏳', 'กำลัง Packing': '📦', 'รอส่ง': '📫' };
+        const ORDER_STATUS = ['รอยืนยัน', 'กำลัง Packing', 'รอส่ง'];
+        const sorted = [...orders].sort((a, b) => ORDER_STATUS.indexOf(a.status) - ORDER_STATUS.indexOf(b.status));
+
+        // ส่งทีละ order เพื่อหลีกเลี่ยง Flex ขนาดใหญ่
+        for (const o of sorted.slice(0, 10)) {
+          const icon = ICONS[o.status] || '📋';
+          let text = `${icon} ${o.status}\n#${o.orderId}\n👤 ${o.displayName}  💰 ${o.total}฿\n📍 ${(o.address||'').slice(0,50)}`;
+
+          let qr = null;
+          if (o.status === 'รอยืนยัน') {
+            qr = { items: [
+              { type: 'action', action: { type: 'message', label: '✅ ยืนยัน', text: `ยืนยัน ${o.orderId}` } },
+              { type: 'action', action: { type: 'message', label: '❌ ยกเลิก', text: `ยกเลิกออเดอร์แอดมิน ${o.orderId}` } },
+            ]};
+          } else if (o.status === 'กำลัง Packing') {
+            qr = { items: [
+              { type: 'action', action: { type: 'message', label: '📫 พร้อมส่ง', text: `พร้อมส่ง ${o.orderId}` } },
+              { type: 'action', action: { type: 'message', label: '❌ ยกเลิก', text: `ยกเลิกออเดอร์แอดมิน ${o.orderId}` } },
+            ]};
+          }
+
+          const msg = { type: 'text', text };
+          if (qr) msg.quickReply = qr;
+          await client.pushMessage({ to: userId, messages: [msg] });
+        }
       }).catch(err => {
         console.error('[orders]', err.message);
         client.pushMessage({ to: userId, messages: [{ type: 'text', text: `❌ error: ${err.message}` }] });
