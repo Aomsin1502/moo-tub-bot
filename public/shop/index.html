@@ -106,6 +106,15 @@ input,textarea,select{font-family:inherit;font-size:16px}
 /* ─── Done ─── */
 #pageDone{display:none;min-height:80vh;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:32px;gap:16px}
 #pageDone.active{display:flex}
+
+/* ─── Lightbox ─── */
+#imgOverlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.92);z-index:9999;align-items:center;justify-content:center;cursor:zoom-out;animation:fadeIn .2s ease}
+#imgOverlay.show{display:flex}
+@keyframes fadeIn{from{opacity:0}to{opacity:1}}
+#imgFull{max-width:95%;max-height:85vh;object-fit:contain;border-radius:12px;box-shadow:0 8px 32px rgba(0,0,0,.5);animation:zoomIn .2s ease}
+@keyframes zoomIn{from{transform:scale(.8);opacity:0}to{transform:scale(1);opacity:1}}
+.img-close{position:fixed;top:16px;right:16px;width:40px;height:40px;background:rgba(255,255,255,.2);border-radius:50%;color:#fff;font-size:22px;display:flex;align-items:center;justify-content:center;cursor:pointer;z-index:10000}
+.prod-img{cursor:zoom-in}
 .done-icon{font-size:80px}
 .done-h{font-size:22px;font-weight:700;color:#27AE60}
 .done-p{font-size:14px;color:#555;line-height:1.8}
@@ -225,6 +234,12 @@ input,textarea,select{font-family:inherit;font-size:16px}
     <div style="font-size:14px;color:#555;line-height:1.8">ร้านจะยืนยันออเดอร์<br>ภายใน 30 นาทีครับ 🙏<br><br>กรุณาติดตามสถานะผ่าน LINE</div>
     <button onclick="closeShop()" style="background:#C0392B;color:#fff;border:none;border-radius:12px;padding:14px 32px;font-size:16px;font-weight:700;cursor:pointer;margin-top:8px">ปิดหน้าต่างนี้</button>
   </div>
+</div>
+
+<!-- Lightbox -->
+<div id="imgOverlay" onclick="closeImg()">
+  <div class="img-close" onclick="closeImg()">✕</div>
+  <img id="imgFull" src="" alt="">
 </div>
 
 <!-- Bottom bar -->
@@ -510,7 +525,7 @@ function buildCatalog(){
       ${c.items.map(it=>`
         <div class="prod-card">
           ${it.img
-            ? `<img class="prod-img" src="${it.img}" alt="${it.name}" loading="lazy" onerror="this.outerHTML='<div class=\\'prod-emoji\\'>🐷</div>'">`
+            ? `<img class="prod-img" src="${it.img}" alt="${it.name}" loading="lazy" onclick="openImg('${it.img}','${it.name.replace(/'/g,"\\'")}')" onerror="this.outerHTML='<div class=\\'prod-emoji\\'>🐷</div>'">`
             : `<div class="prod-emoji">${c.cat.split(' ')[0]}</div>`
           }
           <div class="prod-info">
@@ -545,6 +560,17 @@ async function init(){
     document.getElementById('initLoad').innerHTML=`<p style="color:#E74C3C;padding:24px;text-align:center">เกิดข้อผิดพลาด<br>${e.message}</p>`;
   }
 }
+function openImg(src, name){
+  document.getElementById('imgFull').src = src;
+  document.getElementById('imgFull').alt = name;
+  document.getElementById('imgOverlay').className = 'show';
+  document.body.style.overflow = 'hidden';
+}
+function closeImg(){
+  document.getElementById('imgOverlay').className = '';
+  document.body.style.overflow = '';
+}
+
 function fixCatTabsTop(){
   const hd = document.getElementById('header');
   const tabs = document.getElementById('catTabs');
