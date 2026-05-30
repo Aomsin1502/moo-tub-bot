@@ -29,9 +29,11 @@ input,textarea,select{font-family:inherit;font-size:16px}
 /* ─── Content ─── */
 .page{display:none;padding-bottom:90px}
 .page.active{display:block}
+#page1{display:none}
+#page1.active{display:flex;flex-direction:column}
 
 /* ─── Category tabs ─── */
-.cat-tabs{background:#fff;display:flex;overflow-x:auto;padding:0 8px;border-bottom:2px solid #f0f0f0;position:sticky;top:84px;z-index:100}
+.cat-tabs{background:#fff;display:flex;overflow-x:auto;padding:0 8px;border-bottom:2px solid #f0f0f0;position:sticky;top:0;z-index:100;box-shadow:0 2px 4px rgba(0,0,0,.06)}
 .cat-tabs::-webkit-scrollbar{display:none}
 .cat-tab{flex:0 0 auto;padding:12px 14px;font-size:13px;cursor:pointer;border-bottom:3px solid transparent;white-space:nowrap;color:#666;transition:.2s}
 .cat-tab.active{color:#C0392B;border-bottom-color:#C0392B;font-weight:600}
@@ -149,9 +151,11 @@ input,textarea,select{font-family:inherit;font-size:16px}
   </div>
 </div>
 
+<!-- Category tabs — sticky ใต้ header เสมอ (ซ่อนเมื่อไม่ใช่ page1) -->
+<div class="cat-tabs" id="catTabs"></div>
+
 <!-- Page 1: Catalog -->
 <div class="page active" id="page1">
-  <div class="cat-tabs" id="catTabs"></div>
   <div id="catContent"></div>
 </div>
 
@@ -370,6 +374,8 @@ function updateBar(){
 // ─── Step navigation ──────────────────────────────────
 function setStep(n){
   curStep=n;
+  // แสดง/ซ่อน category tabs เฉพาะ page 1
+  document.getElementById('catTabs').style.display = n===1 ? 'flex' : 'none';
   for(let i=1;i<=4;i++){
     document.getElementById('page'+i).className='page'+(i===n?' active':'');
     document.getElementById('s'+i).className='step'+(i===n?' active':'');
@@ -534,10 +540,17 @@ async function init(){
     buildCatalog();
     document.getElementById('initLoad').style.display='none';
     updateBar();
+    fixCatTabsTop();
   }catch(e){
     document.getElementById('initLoad').innerHTML=`<p style="color:#E74C3C;padding:24px;text-align:center">เกิดข้อผิดพลาด<br>${e.message}</p>`;
   }
 }
+function fixCatTabsTop(){
+  const hd = document.getElementById('header');
+  const tabs = document.getElementById('catTabs');
+  if(hd && tabs) tabs.style.top = hd.offsetHeight + 'px';
+}
+
 function closeShop(){
   try{
     if(liff.isInClient()){liff.closeWindow();}
