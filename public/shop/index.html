@@ -1,261 +1,513 @@
 <!DOCTYPE html>
 <html lang="th">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
-  <title>ร้านหมูทุบแม่บัวเผื่อน</title>
-  <script src="https://static.line-scdn.net/liff/edge/versions/2.22.3/sdk.js"></script>
-  <style>
-    * { box-sizing: border-box; margin: 0; padding: 0; }
-    body { font-family: 'Helvetica Neue', Arial, sans-serif; background: #f5f5f5; color: #1a1a1a; padding-bottom: 90px; }
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>ร้านหมูทุบแม่บัวเผื่อน</title>
+<script src="https://static.line-scdn.net/liff/edge/versions/2.22.3/sdk.js"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+body{font-family:'Helvetica Neue',Arial,sans-serif;background:#f0f0f0;color:#1a1a1a;min-height:100vh}
+input,textarea,select{font-family:inherit;font-size:16px}
 
-    /* Header */
-    .header { background: #C0392B; color: #fff; padding: 16px; text-align: center; position: sticky; top: 0; z-index: 100; box-shadow: 0 2px 8px rgba(0,0,0,0.2); }
-    .header h1 { font-size: 18px; font-weight: bold; }
-    .header p { font-size: 12px; color: #FFD0CC; margin-top: 2px; }
+/* ─── Header ─── */
+.hd{background:#C0392B;color:#fff;position:sticky;top:0;z-index:200;box-shadow:0 2px 8px rgba(0,0,0,.25)}
+.hd-top{display:flex;align-items:center;padding:12px 16px;gap:12px}
+.hd-top h1{flex:1;font-size:17px;font-weight:700}
+.hd-back{background:rgba(255,255,255,.2);border:none;color:#fff;width:36px;height:36px;border-radius:50%;font-size:18px;cursor:pointer;display:flex;align-items:center;justify-content:center}
 
-    /* Loading */
-    #loading { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 60vh; gap: 16px; }
-    .spinner { width: 40px; height: 40px; border: 4px solid #eee; border-top-color: #C0392B; border-radius: 50%; animation: spin 0.8s linear infinite; }
-    @keyframes spin { to { transform: rotate(360deg); } }
+/* ─── Steps ─── */
+.steps{display:flex;background:#A93226;padding:10px 16px 14px}
+.step{flex:1;text-align:center;position:relative}
+.step:not(:last-child)::after{content:'';position:absolute;top:12px;right:-50%;width:100%;height:2px;background:rgba(255,255,255,.3);z-index:0}
+.step-dot{width:24px;height:24px;border-radius:50%;background:rgba(255,255,255,.3);margin:0 auto 4px;display:flex;align-items:center;justify-content:center;font-size:11px;color:#fff;font-weight:700;position:relative;z-index:1;transition:.3s}
+.step-dot.done{background:#27AE60}
+.step-dot.active{background:#fff;color:#C0392B}
+.step-label{font-size:10px;color:rgba(255,255,255,.7)}
+.step.active .step-label{color:#fff;font-weight:600}
 
-    /* Category */
-    .category { margin: 12px 12px 0; }
-    .cat-title { background: #fff; border-radius: 10px 10px 0 0; padding: 12px 16px; font-weight: bold; font-size: 15px; color: #C0392B; border-bottom: 1px solid #f0f0f0; }
+/* ─── Content ─── */
+.page{display:none;padding-bottom:90px}
+.page.active{display:block}
 
-    /* Product row */
-    .product { background: #fff; padding: 12px 16px; border-bottom: 1px solid #f5f5f5; display: flex; align-items: center; gap: 12px; }
-    .product:last-child { border-radius: 0 0 10px 10px; border-bottom: none; }
-    .product-info { flex: 1; }
-    .product-name { font-size: 14px; color: #1a1a1a; }
-    .product-price { font-size: 13px; color: #C0392B; font-weight: bold; margin-top: 2px; }
+/* ─── Category tabs ─── */
+.cat-tabs{background:#fff;display:flex;overflow-x:auto;padding:0 8px;border-bottom:2px solid #f0f0f0;position:sticky;top:84px;z-index:100}
+.cat-tabs::-webkit-scrollbar{display:none}
+.cat-tab{flex:0 0 auto;padding:12px 14px;font-size:13px;cursor:pointer;border-bottom:3px solid transparent;white-space:nowrap;color:#666;transition:.2s}
+.cat-tab.active{color:#C0392B;border-bottom-color:#C0392B;font-weight:600}
 
-    /* Qty control */
-    .qty-control { display: flex; align-items: center; gap: 0; }
-    .qty-btn { width: 32px; height: 32px; border: 2px solid #C0392B; background: #fff; color: #C0392B; font-size: 18px; font-weight: bold; cursor: pointer; border-radius: 50%; display: flex; align-items: center; justify-content: center; transition: all 0.1s; user-select: none; -webkit-tap-highlight-color: transparent; }
-    .qty-btn:active { background: #C0392B; color: #fff; transform: scale(0.9); }
-    .qty-num { width: 36px; text-align: center; font-size: 16px; font-weight: bold; color: #1a1a1a; }
-    .qty-num.active { color: #C0392B; }
+/* ─── Products ─── */
+.cat-section{padding:12px 12px 0}
+.cat-title{font-size:13px;font-weight:700;color:#888;padding:8px 4px 6px;text-transform:uppercase;letter-spacing:.5px}
+.prod-card{background:#fff;border-radius:12px;margin-bottom:8px;padding:14px 16px;display:flex;align-items:center;gap:12px;box-shadow:0 1px 3px rgba(0,0,0,.08)}
+.prod-info{flex:1}
+.prod-name{font-size:14px;font-weight:600;color:#1a1a1a;line-height:1.3}
+.prod-price{font-size:14px;font-weight:700;color:#C0392B;margin-top:3px}
+.qty-wrap{display:flex;align-items:center;gap:2px;flex-shrink:0}
+.qty-btn{width:34px;height:34px;border-radius:50%;border:2px solid #C0392B;background:#fff;color:#C0392B;font-size:20px;font-weight:300;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:.15s;user-select:none}
+.qty-btn:active{background:#C0392B;color:#fff;transform:scale(.9)}
+.qty-val{width:32px;text-align:center;font-size:16px;font-weight:700;color:#1a1a1a}
+.qty-val.pos{color:#C0392B}
 
-    /* Bottom bar */
-    .bottom-bar { position: fixed; bottom: 0; left: 0; right: 0; background: #fff; padding: 12px 16px; box-shadow: 0 -2px 12px rgba(0,0,0,0.1); display: flex; align-items: center; gap: 12px; z-index: 100; }
-    .total-info { flex: 1; }
-    .total-label { font-size: 11px; color: #888; }
-    .total-amount { font-size: 20px; font-weight: bold; color: #C0392B; }
-    .order-btn { background: #C0392B; color: #fff; border: none; border-radius: 10px; padding: 12px 24px; font-size: 16px; font-weight: bold; cursor: pointer; white-space: nowrap; transition: opacity 0.1s; }
-    .order-btn:disabled { background: #ccc; cursor: not-allowed; }
-    .order-btn:active { opacity: 0.8; }
+/* ─── Cart items ─── */
+.cart-card{background:#fff;border-radius:12px;margin:12px;padding:0;overflow:hidden;box-shadow:0 1px 3px rgba(0,0,0,.08)}
+.cart-row{display:flex;align-items:center;padding:14px 16px;border-bottom:1px solid #f5f5f5;gap:12px}
+.cart-row:last-child{border-bottom:none}
+.cart-info{flex:1}
+.cart-name{font-size:14px;font-weight:600}
+.cart-sub{font-size:12px;color:#888;margin-top:2px}
+.cart-price{font-size:14px;font-weight:700;color:#C0392B;flex-shrink:0}
 
-    /* Success */
-    #success { display: none; flex-direction: column; align-items: center; justify-content: center; height: 60vh; gap: 16px; text-align: center; padding: 24px; }
-    #success .icon { font-size: 64px; }
-    #success h2 { font-size: 20px; color: #27AE60; }
-    #success p { color: #555; font-size: 14px; line-height: 1.6; }
-  </style>
+/* ─── Summary box ─── */
+.summary{background:#fff;border-radius:12px;margin:12px;padding:16px;box-shadow:0 1px 3px rgba(0,0,0,.08)}
+.sum-row{display:flex;justify-content:space-between;align-items:center;padding:6px 0}
+.sum-row.sep{border-top:1px dashed #eee;margin-top:8px;padding-top:14px}
+.sum-label{font-size:14px;color:#555}
+.sum-val{font-size:14px;font-weight:600;color:#1a1a1a}
+.sum-total{font-size:20px;font-weight:700;color:#C0392B}
+.ship-note{font-size:12px;color:#888;margin-top:8px;line-height:1.5}
+
+/* ─── Address form ─── */
+.form-card{background:#fff;border-radius:12px;margin:12px;padding:16px;box-shadow:0 1px 3px rgba(0,0,0,.08)}
+.form-card h3{font-size:15px;font-weight:700;color:#1a1a1a;margin-bottom:16px}
+.form-group{margin-bottom:14px}
+.form-label{font-size:13px;font-weight:600;color:#555;margin-bottom:6px;display:block}
+.form-input{width:100%;border:1.5px solid #ddd;border-radius:10px;padding:12px 14px;font-size:15px;transition:.2s;background:#fafafa}
+.form-input:focus{outline:none;border-color:#C0392B;background:#fff}
+.form-input.err{border-color:#E74C3C}
+.form-hint{font-size:12px;color:#888;margin-top:4px}
+
+/* ─── Payment ─── */
+.pay-card{background:#fff;border-radius:12px;margin:12px;padding:20px;text-align:center;box-shadow:0 1px 3px rgba(0,0,0,.08)}
+.pay-card h3{font-size:15px;font-weight:700;color:#1a1a1a;margin-bottom:4px}
+.pay-card p{font-size:13px;color:#888;margin-bottom:16px}
+.pay-amount{font-size:32px;font-weight:700;color:#C0392B;margin:12px 0 4px}
+.pay-amount-label{font-size:12px;color:#888}
+.promptpay-num{background:#EBF5FB;border-radius:12px;padding:14px;margin:12px 0}
+.promptpay-num .num{font-size:26px;font-weight:700;color:#1A5276;letter-spacing:2px}
+.promptpay-num .bank{font-size:13px;color:#555;margin-top:4px}
+.qr-img{width:180px;height:180px;margin:12px auto;display:block;border-radius:8px;border:1px solid #eee}
+.pay-steps{text-align:left;background:#FEF9E7;border-radius:10px;padding:14px;margin-top:12px}
+.pay-steps h4{font-size:13px;font-weight:700;color:#7D6608;margin-bottom:8px}
+.pay-step-item{font-size:13px;color:#555;padding:3px 0;padding-left:20px;position:relative}
+.pay-step-item::before{content:'✓';position:absolute;left:0;color:#27AE60;font-weight:700}
+
+/* ─── Slip upload ─── */
+.slip-upload{border:2px dashed #C0392B;border-radius:12px;padding:24px;text-align:center;margin:12px;cursor:pointer;background:#fff}
+.slip-upload input{display:none}
+.slip-upload .icon{font-size:48px;margin-bottom:8px}
+.slip-upload p{font-size:14px;color:#555}
+.slip-preview{width:100%;max-height:200px;object-fit:contain;border-radius:8px;margin-top:12px;display:none}
+
+/* ─── Done ─── */
+#pageDone{display:none;min-height:80vh;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:32px;gap:16px}
+#pageDone.active{display:flex}
+.done-icon{font-size:80px}
+.done-h{font-size:22px;font-weight:700;color:#27AE60}
+.done-p{font-size:14px;color:#555;line-height:1.8}
+.done-id{background:#f0f0f0;border-radius:8px;padding:10px 20px;font-size:16px;font-weight:700;color:#1a1a1a;letter-spacing:1px}
+
+/* ─── Bottom bar ─── */
+.bot-bar{position:fixed;bottom:0;left:0;right:0;background:#fff;padding:12px 16px;box-shadow:0 -2px 12px rgba(0,0,0,.1);z-index:150}
+.bot-row{display:flex;align-items:center;gap:12px}
+.bot-total{flex:1}
+.bot-total-lbl{font-size:11px;color:#888}
+.bot-total-val{font-size:20px;font-weight:700;color:#C0392B}
+.bot-total-sub{font-size:11px;color:#888;margin-top:1px}
+.next-btn{background:#C0392B;color:#fff;border:none;border-radius:12px;padding:14px 24px;font-size:15px;font-weight:700;cursor:pointer;white-space:nowrap;transition:.15s;min-width:120px}
+.next-btn:active{opacity:.8;transform:scale(.97)}
+.next-btn:disabled{background:#ccc;cursor:not-allowed}
+
+/* ─── Loading ─── */
+#initLoad{position:fixed;inset:0;background:#fff;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;z-index:999}
+.spin{width:44px;height:44px;border:4px solid #f0f0f0;border-top-color:#C0392B;border-radius:50%;animation:sp .8s linear infinite}
+@keyframes sp{to{transform:rotate(360deg)}}
+</style>
 </head>
 <body>
 
-<div class="header">
-  <h1>🐷 ร้านหมูทุบแม่บัวเผื่อน</h1>
-  <p>แม่บัวเผื่อน • ชุมพร • จัดส่งทั่วไทย</p>
+<!-- Loading -->
+<div id="initLoad">
+  <div class="spin"></div>
+  <p style="color:#888;font-size:14px">กำลังโหลด...</p>
 </div>
 
-<div id="loading">
-  <div class="spinner"></div>
-  <p style="color:#888;font-size:14px;">กำลังโหลด...</p>
-</div>
-
-<div id="catalog" style="display:none;"></div>
-
-<div id="success">
-  <div class="icon">✅</div>
-  <h2>ส่งออเดอร์แล้ว!</h2>
-  <p>กรุณาพิมพ์ที่อยู่จัดส่งใน LINE chat<br>เพื่อดำเนินการต่อครับ 🙏</p>
-</div>
-
-<div class="bottom-bar" id="bottomBar" style="display:none;">
-  <div class="total-info">
-    <div class="total-label">รวมสินค้า</div>
-    <div class="total-amount" id="totalAmount">0 บาท</div>
+<!-- Header -->
+<div class="hd" id="header">
+  <div class="hd-top">
+    <button class="hd-back" id="backBtn" onclick="goBack()" style="display:none">←</button>
+    <h1 id="headerTitle">🐷 ร้านหมูทุบแม่บัวเผื่อน</h1>
   </div>
-  <button class="order-btn" id="orderBtn" onclick="submitOrder()" disabled>🛒 สั่งซื้อ</button>
+  <!-- Steps -->
+  <div class="steps">
+    <div class="step active" id="s1"><div class="step-dot active" id="sd1">1</div><div class="step-label">สินค้า</div></div>
+    <div class="step" id="s2"><div class="step-dot" id="sd2">2</div><div class="step-label">ตะกร้า</div></div>
+    <div class="step" id="s3"><div class="step-dot" id="sd3">3</div><div class="step-label">ที่อยู่</div></div>
+    <div class="step" id="s4"><div class="step-dot" id="sd4">4</div><div class="step-label">ชำระเงิน</div></div>
+  </div>
+</div>
+
+<!-- Page 1: Catalog -->
+<div class="page active" id="page1">
+  <div class="cat-tabs" id="catTabs"></div>
+  <div id="catContent"></div>
+</div>
+
+<!-- Page 2: Cart -->
+<div class="page" id="page2">
+  <div id="cartContent"></div>
+</div>
+
+<!-- Page 3: Address -->
+<div class="page" id="page3">
+  <div class="form-card" style="margin-top:12px">
+    <h3>📦 ที่อยู่จัดส่ง</h3>
+    <div class="form-group">
+      <label class="form-label">ชื่อ-นามสกุล *</label>
+      <input class="form-input" id="fname" type="text" placeholder="สมชาย ใจดี">
+    </div>
+    <div class="form-group">
+      <label class="form-label">ที่อยู่ *</label>
+      <textarea class="form-input" id="faddr" rows="3" placeholder="บ้านเลขที่ / ถนน / ตำบล / อำเภอ / จังหวัด / รหัสไปรษณีย์"></textarea>
+    </div>
+    <div class="form-group">
+      <label class="form-label">เบอร์โทรศัพท์ *</label>
+      <input class="form-input" id="fphone" type="tel" placeholder="0812345678" maxlength="10">
+    </div>
+    <div class="form-group">
+      <label class="form-label">หมายเหตุ (ถ้ามี)</label>
+      <input class="form-input" id="fnote" type="text" placeholder="เช่น ฝากไว้กับยาม">
+    </div>
+  </div>
+</div>
+
+<!-- Page 4: Payment -->
+<div class="page" id="page4">
+  <div class="pay-card" style="margin-top:12px">
+    <h3>💳 ชำระเงิน</h3>
+    <p>โอนผ่าน PromptPay</p>
+    <div class="pay-amount-label">ยอดที่ต้องโอน</div>
+    <div class="pay-amount" id="payAmount">0 บาท</div>
+    <div class="promptpay-num">
+      <div class="num">0931726399</div>
+      <div class="bank">🏦 SCB — แม่บัวเผื่อน</div>
+    </div>
+    <img id="qrImg" class="qr-img" src="" alt="QR PromptPay">
+    <div class="pay-steps">
+      <h4>📋 ขั้นตอน:</h4>
+      <div class="pay-step-item">เปิดแอปธนาคาร → สแกน QR หรือโอนพร้อมเพย์</div>
+      <div class="pay-step-item">กรอกยอด <strong id="payAmountStep">0 บาท</strong></div>
+      <div class="pay-step-item">ถ่ายภาพสลิป แล้วกดปุ่มด้านล่าง</div>
+    </div>
+  </div>
+
+  <!-- Slip Upload -->
+  <div class="slip-upload" id="slipZone" onclick="document.getElementById('slipInput').click()">
+    <input type="file" id="slipInput" accept="image/*" onchange="previewSlip(this)">
+    <div class="icon">📸</div>
+    <p>แตะเพื่อถ่ายรูปหรือเลือกสลิป</p>
+    <img id="slipPreview" class="slip-preview">
+  </div>
+</div>
+
+<!-- Done -->
+<div class="page" id="pageDone">
+  <div style="display:flex;flex-direction:column;align-items:center;gap:16px;padding:48px 32px;min-height:70vh;justify-content:center;text-align:center">
+    <div style="font-size:80px">✅</div>
+    <div style="font-size:22px;font-weight:700;color:#27AE60">ส่งออเดอร์เรียบร้อย!</div>
+    <div class="done-id" id="doneOrderId"></div>
+    <div style="font-size:14px;color:#555;line-height:1.8">ร้านจะยืนยันออเดอร์<br>ภายใน 30 นาทีครับ 🙏<br><br>กรุณาติดตามสถานะผ่าน LINE</div>
+    <button onclick="liff.closeWindow()" style="background:#C0392B;color:#fff;border:none;border-radius:12px;padding:14px 32px;font-size:16px;font-weight:700;cursor:pointer;margin-top:8px">ปิดหน้าต่างนี้</button>
+  </div>
+</div>
+
+<!-- Bottom bar -->
+<div class="bot-bar" id="botBar">
+  <div class="bot-row">
+    <div class="bot-total">
+      <div class="bot-total-lbl" id="botLabel">รวมสินค้า</div>
+      <div class="bot-total-val" id="botTotal">0 บาท</div>
+      <div class="bot-total-sub" id="botSub"></div>
+    </div>
+    <button class="next-btn" id="nextBtn" disabled onclick="nextStep()">ดูตะกร้า →</button>
+  </div>
 </div>
 
 <script>
 const LIFF_ID = '2010237396-QOmKN3ML';
+const PROMPTPAY = '0931726399';
 
-const MENU = [
-  { category: '🐷 หมูทุบ', items: [
-    { name: 'หมูทุบ 130g', price: 100 },
-    { name: 'หมูทุบ 500g', price: 350 },
-    { name: 'หมูทุบ 1000g', price: 700 },
+// ─── Menu data ───────────────────────────────────────
+const MENU=[
+  {cat:'🐷 หมูทุบ',items:[{name:'หมูทุบ 130g',price:100,w:130},{name:'หมูทุบ 500g',price:350,w:500},{name:'หมูทุบ 1000g',price:700,w:1000}]},
+  {cat:'🐷 หมูแท่ง',items:[{name:'หมูแท่ง 130g',price:100,w:130},{name:'หมูแท่ง 200g',price:200,w:200},{name:'หมูแท่ง 500g',price:350,w:500}]},
+  {cat:'🐷 หมูแผ่นกรอบ',items:[{name:'หมูแผ่นกรอบ 130g',price:100,w:130}]},
+  {cat:'🐷 หมูสวรรค์',items:[{name:'หมูสวรรค์ 170g',price:100,w:170},{name:'หมูสวรรค์ 350g',price:200,w:350},{name:'หมูสวรรค์ 500g',price:300,w:500},{name:'หมูสวรรค์ 1000g',price:600,w:1000}]},
+  {cat:'🐷 หมูฝอย',items:[{name:'หมูฝอย 180g',price:100,w:180},{name:'หมูฝอย 350g',price:200,w:350},{name:'หมูฝอย 500g',price:300,w:500},{name:'หมูฝอย 1000g',price:600,w:1000}]},
+  {cat:'🐷 ฝอยกรอบ',items:[{name:'ฝอยกรอบ 170g',price:100,w:170},{name:'ฝอยกรอบ 350g',price:200,w:350}]},
+  {cat:'🐷 หมูหยอง',items:[{name:'หมูหยอง 150g',price:100,w:150},{name:'หมูหยอง 500g',price:300,w:500},{name:'หมูหยอง 1000g',price:600,w:1000}]},
+  {cat:'🔥 สินค้าอื่นๆ',items:[{name:'ปลาเก๋าปรุงรส 150g',price:100,w:150},{name:'หมึกเชอรี่ 150g',price:100,w:150},{name:'เชียงปลาสลิด 500g',price:140,w:500},{name:'กุนเชียงหมู 500g',price:140,w:500}]},
+  {cat:'🌶️ น้ำพริก',items:[
+    {name:'น้ำพริกกากหมู 200g',price:100,w:200},{name:'น้ำพริกกากหมู 500g',price:250,w:500},
+    {name:'น้ำพริกแมงดา (เปียก)',price:50,w:370},{name:'น้ำพริกตาแดง (เปียก)',price:50,w:370},
+    {name:'น้ำพริกปลาย่าง (เปียก)',price:50,w:370},{name:'น้ำพริกเผากุ้ง (เปียก)',price:50,w:170},
+    {name:'น้ำพริกปลาสลิด',price:50,w:230},{name:'น้ำพริกปลาดุกฟูผัดพริกขิง',price:50,w:230},
+    {name:'น้ำพริกหมูทุบ',price:50,w:100},{name:'น้ำพริกปลาย่าง',price:50,w:370},
+    {name:'น้ำพริกนรกแมงดา (แห้ง)',price:50,w:250},{name:'น้ำพริกนรกปลาย่าง (แห้ง)',price:50,w:250},
   ]},
-  { category: '🐷 หมูแท่ง', items: [
-    { name: 'หมูแท่ง 130g', price: 100 },
-    { name: 'หมูแท่ง 200g', price: 200 },
-    { name: 'หมูแท่ง 500g', price: 350 },
-  ]},
-  { category: '🐷 หมูแผ่นกรอบ', items: [
-    { name: 'หมูแผ่นกรอบ 130g', price: 100 },
-  ]},
-  { category: '🐷 หมูสวรรค์', items: [
-    { name: 'หมูสวรรค์ 170g', price: 100 },
-    { name: 'หมูสวรรค์ 350g', price: 200 },
-    { name: 'หมูสวรรค์ 500g', price: 300 },
-    { name: 'หมูสวรรค์ 1000g', price: 600 },
-  ]},
-  { category: '🐷 หมูฝอย', items: [
-    { name: 'หมูฝอย 180g', price: 100 },
-    { name: 'หมูฝอย 350g', price: 200 },
-    { name: 'หมูฝอย 500g', price: 300 },
-    { name: 'หมูฝอย 1000g', price: 600 },
-  ]},
-  { category: '🐷 ฝอยกรอบ', items: [
-    { name: 'ฝอยกรอบ 170g', price: 100 },
-    { name: 'ฝอยกรอบ 350g', price: 200 },
-  ]},
-  { category: '🐷 หมูหยอง', items: [
-    { name: 'หมูหยอง 150g', price: 100 },
-    { name: 'หมูหยอง 500g', price: 300 },
-    { name: 'หมูหยอง 1000g', price: 600 },
-  ]},
-  { category: '🔥 สินค้าอื่นๆ', items: [
-    { name: 'ปลาเก๋าปรุงรส 150g', price: 100 },
-    { name: 'หมึกเชอรี่ 150g', price: 100 },
-    { name: 'เชียงปลาสลิด 500g', price: 140 },
-    { name: 'กุนเชียงหมู 500g', price: 140 },
-  ]},
-  { category: '🌶️ น้ำพริก', items: [
-    { name: 'น้ำพริกกากหมู 200g', price: 100 },
-    { name: 'น้ำพริกกากหมู 500g', price: 250 },
-    { name: 'น้ำพริกแมงดา (เปียก)', price: 50 },
-    { name: 'น้ำพริกตาแดง (เปียก)', price: 50 },
-    { name: 'น้ำพริกปลาย่าง (เปียก)', price: 50 },
-    { name: 'น้ำพริกเผากุ้ง (เปียก)', price: 50 },
-    { name: 'น้ำพริกปลาสลิด', price: 50 },
-    { name: 'น้ำพริกปลาดุกฟูผัดพริกขิง', price: 50 },
-    { name: 'น้ำพริกหมูทุบ', price: 50 },
-    { name: 'น้ำพริกปลาย่าง', price: 50 },
-    { name: 'น้ำพริกนรกแมงดา (แห้ง)', price: 50 },
-    { name: 'น้ำพริกนรกปลาย่าง (แห้ง)', price: 50 },
-  ]},
-  { category: '🦐 กะปิ & อื่นๆ', items: [
-    { name: 'กะปิแท้ชุมพร', price: 70 },
-    { name: 'กะปิกุ้งหวาน', price: 70 },
-    { name: 'ขิงดอง 500g', price: 50 },
-    { name: 'ไชโป๊แบบเส้น 400g', price: 50 },
-    { name: 'ไชโป๊แบบแว่น 400g', price: 50 },
-    { name: 'ไชโป๊แบบลูกเต๋า 400g', price: 50 },
+  {cat:'🦐 กะปิ & อื่นๆ',items:[
+    {name:'กะปิแท้ชุมพร',price:70,w:350},{name:'กะปิกุ้งหวาน',price:70,w:350},
+    {name:'ขิงดอง 500g',price:50,w:500},{name:'ไชโป๊แบบเส้น 400g',price:50,w:400},
+    {name:'ไชโป๊แบบแว่น 400g',price:50,w:400},{name:'ไชโป๊แบบลูกเต๋า 400g',price:50,w:400},
   ]},
 ];
 
-const qty = {}; // { itemName: quantity }
-let userProfile = null;
+// ─── State ───────────────────────────────────────────
+const qty={};
+let curStep=1;
+let profile=null;
+let slipBase64='';
 
-function updateQty(name, price, delta) {
-  qty[name] = Math.max(0, Math.min(10, (qty[name] || 0) + delta));
-  document.getElementById('qty-' + btoa(unescape(encodeURIComponent(name)))).textContent = qty[name];
-  const numEl = document.getElementById('qty-' + btoa(unescape(encodeURIComponent(name))));
-  numEl.className = 'qty-num' + (qty[name] > 0 ? ' active' : '');
-  updateTotal();
-}
-
-function updateTotal() {
-  let total = 0;
-  let count = 0;
-  Object.entries(qty).forEach(([name, q]) => {
-    if (q > 0) {
-      const item = MENU.flatMap(c => c.items).find(i => i.name === name);
-      if (item) { total += item.price * q; count += q; }
-    }
+// ─── Shipping calc ───────────────────────────────────
+function shipFee(){
+  let w=0;
+  Object.entries(qty).forEach(([name,q])=>{
+    const it=MENU.flatMap(c=>c.items).find(i=>i.name===name);
+    if(it)w+=it.w*q;
   });
-  document.getElementById('totalAmount').textContent = total.toLocaleString() + ' บาท';
-  const btn = document.getElementById('orderBtn');
-  btn.disabled = count === 0;
-  btn.textContent = count > 0 ? `🛒 สั่งซื้อ (${count} ชิ้น)` : '🛒 สั่งซื้อ';
+  if(w<=3000)return 80;
+  if(w<=5000)return 100;
+  return 200;
+}
+function itemsTotal(){
+  let t=0;
+  Object.entries(qty).forEach(([name,q])=>{
+    const it=MENU.flatMap(c=>c.items).find(i=>i.name===name);
+    if(it)t+=it.price*q;
+  });
+  return t;
+}
+function cartItems(){
+  return Object.entries(qty).filter(([,q])=>q>0).map(([name,q])=>{
+    const it=MENU.flatMap(c=>c.items).find(i=>i.name===name);
+    return{name,price:it.price,qty:q,w:it.w};
+  });
 }
 
-function buildCatalog() {
-  const catalog = document.getElementById('catalog');
-  catalog.innerHTML = MENU.map(cat => `
-    <div class="category">
-      <div class="cat-title">${cat.category}</div>
-      ${cat.items.map(item => {
-        const id = btoa(unescape(encodeURIComponent(item.name)));
-        return `
-          <div class="product">
-            <div class="product-info">
-              <div class="product-name">${item.name}</div>
-              <div class="product-price">฿${item.price.toLocaleString()}</div>
-            </div>
-            <div class="qty-control">
-              <div class="qty-btn" onclick="updateQty('${item.name.replace(/'/g,"\\'")}', ${item.price}, -1)">−</div>
-              <div class="qty-num" id="qty-${id}">0</div>
-              <div class="qty-btn" onclick="updateQty('${item.name.replace(/'/g,"\\'")}', ${item.price}, 1)">+</div>
-            </div>
-          </div>`;
-      }).join('')}
-    </div>
-  `).join('');
-  document.getElementById('loading').style.display = 'none';
-  catalog.style.display = 'block';
-  document.getElementById('bottomBar').style.display = 'flex';
+// ─── Qty control ─────────────────────────────────────
+function changeQty(name,d){
+  qty[name]=Math.max(0,Math.min(10,(qty[name]||0)+d));
+  const id='q_'+encodeB(name);
+  const el=document.getElementById(id);
+  if(el){el.textContent=qty[name];el.className='qty-val'+(qty[name]>0?' pos':'');}
+  updateBar();
 }
+function encodeB(s){return btoa(unescape(encodeURIComponent(s))).replace(/[^a-zA-Z0-9]/g,'');}
 
-async function submitOrder() {
-  const items = Object.entries(qty)
-    .filter(([, q]) => q > 0)
-    .map(([name, q]) => {
-      const item = MENU.flatMap(c => c.items).find(i => i.name === name);
-      return { name, price: item.price, qty: q };
-    });
-
-  if (items.length === 0) return;
-
-  const btn = document.getElementById('orderBtn');
-  btn.disabled = true;
-  btn.textContent = '⏳ กำลังส่ง...';
-
-  try {
-    const res = await fetch('/api/liff-order', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        userId: userProfile.userId,
-        displayName: userProfile.displayName,
-        items,
-      }),
-    });
-    if (res.ok) {
-      document.getElementById('catalog').style.display = 'none';
-      document.getElementById('bottomBar').style.display = 'none';
-      document.getElementById('success').style.display = 'flex';
-      setTimeout(() => liff.closeWindow(), 3000);
-    } else {
-      throw new Error('server error');
-    }
-  } catch (e) {
-    btn.disabled = false;
-    btn.textContent = '🛒 ลองใหม่';
-    alert('เกิดข้อผิดพลาด กรุณาลองใหม่ครับ');
+// ─── Bottom bar update ────────────────────────────────
+function updateBar(){
+  const items=cartItems();
+  const t=itemsTotal();
+  const cnt=items.reduce((s,i)=>s+i.qty,0);
+  const btn=document.getElementById('nextBtn');
+  const tv=document.getElementById('botTotal');
+  const lbl=document.getElementById('botLabel');
+  const sub=document.getElementById('botSub');
+  if(curStep===1){
+    tv.textContent=t.toLocaleString()+' บาท';
+    sub.textContent=cnt>0?`${cnt} ชิ้น`:'';
+    btn.disabled=cnt===0;
+    btn.textContent='ดูตะกร้า →';
+    lbl.textContent='รวมสินค้า';
+  }else if(curStep===2){
+    const fee=shipFee();
+    tv.textContent=(t+fee).toLocaleString()+' บาท';
+    sub.textContent=`สินค้า ${t.toLocaleString()} + ส่ง ${fee} บาท`;
+    btn.disabled=cnt===0;
+    btn.textContent='กรอกที่อยู่ →';
+    lbl.textContent='รวมทั้งหมด';
+  }else if(curStep===3){
+    tv.textContent=(t+shipFee()).toLocaleString()+' บาท';
+    sub.textContent='';
+    btn.disabled=false;
+    btn.textContent='ไปชำระเงิน →';
+    lbl.textContent='ยอดชำระ';
+  }else if(curStep===4){
+    tv.textContent=(t+shipFee()).toLocaleString()+' บาท';
+    sub.textContent='รวมค่าส่งแล้ว';
+    btn.disabled=!slipBase64;
+    btn.textContent='✅ ยืนยันออเดอร์';
+    lbl.textContent='ยอดที่โอน';
   }
 }
 
-async function init() {
-  try {
-    await liff.init({ liffId: LIFF_ID });
-    if (!liff.isLoggedIn()) {
-      liff.login();
-      return;
-    }
-    userProfile = await liff.getProfile();
+// ─── Step navigation ──────────────────────────────────
+function setStep(n){
+  curStep=n;
+  for(let i=1;i<=4;i++){
+    document.getElementById('page'+i).className='page'+(i===n?' active':'');
+    document.getElementById('s'+i).className='step'+(i===n?' active':'');
+    const d=document.getElementById('sd'+i);
+    d.className='step-dot'+(i<n?' done':i===n?' active':'');
+    d.textContent=i<n?'✓':i;
+  }
+  document.getElementById('backBtn').style.display=n>1?'flex':'none';
+  document.getElementById('headerTitle').textContent=
+    ['','🐷 เลือกสินค้า','🛒 ตะกร้า','📦 ที่อยู่จัดส่ง','💳 ชำระเงิน'][n];
+  updateBar();
+  window.scrollTo(0,0);
+}
+function goBack(){if(curStep>1)setStep(curStep-1);}
+
+function nextStep(){
+  if(curStep===1){buildCart();setStep(2);}
+  else if(curStep===2){setStep(3);}
+  else if(curStep===3){if(validateAddr())buildPayment();}
+  else if(curStep===4){confirmOrder();}
+}
+
+// ─── Validate address ─────────────────────────────────
+function validateAddr(){
+  let ok=true;
+  ['fname','faddr','fphone'].forEach(id=>{
+    const el=document.getElementById(id);
+    if(!el.value.trim()){el.className='form-input err';ok=false;}
+    else el.className='form-input';
+  });
+  if(!ok){alert('กรุณากรอกข้อมูลให้ครบถ้วนครับ');return false;}
+  const ph=document.getElementById('fphone').value.replace(/\D/g,'');
+  if(ph.length<9){document.getElementById('fphone').className='form-input err';alert('เบอร์โทรไม่ถูกต้องครับ');return false;}
+  return true;
+}
+
+// ─── Build cart page ──────────────────────────────────
+function buildCart(){
+  const items=cartItems();
+  const t=itemsTotal();
+  const fee=shipFee();
+  let html='<div style="padding:12px 12px 0"><div style="font-size:13px;font-weight:700;color:#888;padding:4px">รายการสินค้า</div></div>';
+  html+='<div class="cart-card">';
+  items.forEach(i=>{
+    html+=`<div class="cart-row">
+      <div class="cart-info">
+        <div class="cart-name">${i.name}</div>
+        <div class="cart-sub">฿${i.price.toLocaleString()} × ${i.qty} ชิ้น</div>
+      </div>
+      <div style="display:flex;align-items:center;gap:8px">
+        <div class="cart-price">฿${(i.price*i.qty).toLocaleString()}</div>
+        <div style="display:flex;gap:2px">
+          <div class="qty-btn" style="width:28px;height:28px;font-size:16px" onclick="changeQty('${i.name.replace(/'/g,"\\'")}', -1);buildCart()">−</div>
+          <div style="width:24px;text-align:center;font-size:14px;font-weight:700;line-height:28px">${i.qty}</div>
+          <div class="qty-btn" style="width:28px;height:28px;font-size:16px" onclick="changeQty('${i.name.replace(/'/g,"\\'")}', 1);buildCart()">+</div>
+        </div>
+      </div>
+    </div>`;
+  });
+  html+='</div>';
+  html+=`<div class="summary">
+    <div class="sum-row"><span class="sum-label">ราคาสินค้า</span><span class="sum-val">฿${t.toLocaleString()}</span></div>
+    <div class="sum-row"><span class="sum-label">ค่าจัดส่ง (ไปรษณีไทย)</span><span class="sum-val">฿${fee}</span></div>
+    <div class="sum-row sep"><span class="sum-label" style="font-weight:700">รวมทั้งหมด</span><span class="sum-total">฿${(t+fee).toLocaleString()}</span></div>
+    <div class="ship-note">⚠️ ค่าส่งคำนวณจากน้ำหนักโดยประมาณ อาจมีค่าใช้จ่ายเพิ่มเติมสำหรับพัสดุน้ำหนักมากเป็นพิเศษ</div>
+  </div>`;
+  document.getElementById('cartContent').innerHTML=html;
+}
+
+// ─── Build payment page ───────────────────────────────
+function buildPayment(){
+  const total=itemsTotal()+shipFee();
+  document.getElementById('payAmount').textContent='฿'+total.toLocaleString();
+  document.getElementById('payAmountStep').textContent='฿'+total.toLocaleString();
+  document.getElementById('qrImg').src=`https://promptpay.io/${PROMPTPAY}/${total}.png`;
+  setStep(4);
+}
+
+// ─── Slip preview ─────────────────────────────────────
+function previewSlip(input){
+  const file=input.files[0];
+  if(!file)return;
+  const reader=new FileReader();
+  reader.onload=e=>{
+    slipBase64=e.target.result;
+    document.getElementById('slipPreview').src=slipBase64;
+    document.getElementById('slipPreview').style.display='block';
+    document.getElementById('slipZone').querySelector('p').textContent='แตะเพื่อเปลี่ยนสลิป';
+    updateBar();
+  };
+  reader.readAsDataURL(file);
+}
+
+// ─── Submit order ─────────────────────────────────────
+async function confirmOrder(){
+  const btn=document.getElementById('nextBtn');
+  btn.disabled=true;
+  btn.textContent='⏳ กำลังส่ง...';
+  const addr=`${document.getElementById('fname').value.trim()} ${document.getElementById('faddr').value.trim()} โทร: ${document.getElementById('fphone').value.trim()}${document.getElementById('fnote').value.trim()?'\nหมายเหตุ: '+document.getElementById('fnote').value.trim():''}`;
+  try{
+    const res=await fetch('/api/liff-order',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({userId:profile.userId,displayName:profile.displayName,items:cartItems(),address:addr,slip:slipBase64}),
+    });
+    const data=await res.json();
+    if(res.ok){
+      document.getElementById('page4').className='page';
+      document.getElementById('botBar').style.display='none';
+      document.getElementById('pageDone').style.display='flex';
+      document.getElementById('pageDone').className='page active';
+      document.getElementById('doneOrderId').textContent=data.orderId||'';
+      // update steps to done
+      for(let i=1;i<=4;i++){document.getElementById('sd'+i).className='step-dot done';document.getElementById('sd'+i).textContent='✓';}
+    }else throw new Error(data.error||'error');
+  }catch(e){
+    btn.disabled=false;btn.textContent='✅ ยืนยันออเดอร์';
+    alert('เกิดข้อผิดพลาด: '+e.message);
+  }
+}
+
+// ─── Build catalog ────────────────────────────────────
+function buildCatalog(){
+  // Category tabs
+  const tabs=document.getElementById('catTabs');
+  tabs.innerHTML=MENU.map((c,i)=>`<div class="cat-tab${i===0?' active':''}" onclick="scrollCat(${i})">${c.cat}</div>`).join('');
+  // Content
+  const content=document.getElementById('catContent');
+  content.innerHTML=MENU.map((c,ci)=>`
+    <div class="cat-section" id="cat${ci}">
+      <div class="cat-title">${c.cat}</div>
+      ${c.items.map(it=>`
+        <div class="prod-card">
+          <div class="prod-info">
+            <div class="prod-name">${it.name}</div>
+            <div class="prod-price">฿${it.price.toLocaleString()}</div>
+          </div>
+          <div class="qty-wrap">
+            <div class="qty-btn" onclick="changeQty('${it.name.replace(/'/g,"\\'")}', -1)">−</div>
+            <div class="qty-val" id="q_${encodeB(it.name)}">0</div>
+            <div class="qty-btn" onclick="changeQty('${it.name.replace(/'/g,"\\'")}', 1)">+</div>
+          </div>
+        </div>`).join('')}
+    </div>`).join('');
+}
+
+function scrollCat(i){
+  document.getElementById('cat'+i).scrollIntoView({behavior:'smooth',block:'start'});
+  document.querySelectorAll('.cat-tab').forEach((t,j)=>t.className='cat-tab'+(i===j?' active':''));
+}
+
+// ─── Init ─────────────────────────────────────────────
+async function init(){
+  try{
+    await liff.init({liffId:LIFF_ID});
+    if(!liff.isLoggedIn()){liff.login();return;}
+    profile=await liff.getProfile();
     buildCatalog();
-  } catch (e) {
-    document.getElementById('loading').innerHTML =
-      '<p style="color:#E74C3C;padding:24px;text-align:center;">เกิดข้อผิดพลาด<br>' + e.message + '</p>';
+    document.getElementById('initLoad').style.display='none';
+    updateBar();
+  }catch(e){
+    document.getElementById('initLoad').innerHTML=`<p style="color:#E74C3C;padding:24px;text-align:center">เกิดข้อผิดพลาด<br>${e.message}</p>`;
   }
 }
-
 init();
 </script>
 </body>

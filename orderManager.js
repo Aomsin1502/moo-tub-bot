@@ -878,39 +878,76 @@ async function handleMessage(event, client) {
   }
 }
 
-// ─── รับออเดอร์จาก LIFF ───────────────────────────────────────
-async function handleLiffOrder({ userId, displayName, items }, client) {
-  const state = getState(userId);
-  state.displayName = displayName;
-  state.state = 'ordering';
+// ─── รับออเดอร์จาก LIFF (ครบวงจร: items + address + slip) ────
+async function handleLiffOrder({ userId, displayName, items, address, slip }, client) {
+  const { calcShipping, FLAT_ITEMS } = require('./menu');
 
-  // สร้าง cart จาก LIFF items
-  state.cart = items.map(i => ({
-    name: i.name,
-    price: i.price,
-    qty: i.qty,
+  const cart = items.map(i => ({
+    name: i.name, price: i.price, qty: i.qty,
     subtotal: i.price * i.qty,
-    weight: (require('./menu').FLAT_ITEMS.find(m => m.name === i.name) || {}).weight || 0,
+    weight: (FLAT_ITEMS.find(m => m.name === i.name) || {}).weight || 0,
   }));
 
-  // เปลี่ยนสถานะเป็นรอที่อยู่
-  state.state = 'waiting_address';
-  state.orderId = generateOrderId();
+  const total = cart.reduce((s, i) => s + i.price * i.qty, 0);
+  const { fee: shipFee, totalWeight } = calcShipping(cart);
+  const grandTotal = total + shipFee;
+  const orderId = generateOrderId();
 
-  const total = state.cart.reduce((s, i) => s + i.price * i.qty, 0);
-  const cartLines = state.cart.map(i => `• ${i.name} ×${i.qty} = ${i.price * i.qty} บ.`).join('\n');
+  // บันทึก state
+  const state = getState(userId);
+  state.displayName = displayName;
+  state.cart = cart;
+  state.address = address;
+  state.orderId = orderId;
+  state.state = 'waiting_slip';
 
-  // Push ให้ลูกค้าพิมพ์ที่อยู่
+  // บันทึก Sheets
+  const timestamp = new Date().toLocaleString('th-TH', { timeZone: 'Asia/Bangkok' });
+  try {
+    await appendOrder({
+      orderId, displayName, userId,
+      items: cart.map(i => `${i.name}x${i.qty}`).join(', '),
+      total: grandTotal, address, status: 'รอยืนยัน', timestamp,
+    });
+  } catch (err) { console.error('Sheets error:', err.message); }
+
+  // บันทึก orderStatus
+  orderStatus[orderId] = {
+    userId, displayName, status: 'รอยืนยัน',
+    total: grandTotal, items: [...cart], address, trackingNo: '',
+  };
+  userLastOrder[userId] = orderId;
+
+  // แจ้ง admin
+  if (ADMIN_USER_ID) {
+    try {
+      await client.pushMessage({
+        to: ADMIN_USER_ID,
+        messages: [
+          adminOrderFlex(orderId, cart, grandTotal, address, displayName),
+          { type: 'text', text: `📝 จัดส่ง: พิมพ์\n"จัดส่ง ${orderId} [เลขพัสดุ]"` },
+        ],
+      });
+      // ส่งสลิปให้ admin ดูด้วย (ถ้ามี)
+      if (slip) {
+        await client.pushMessage({
+          to: ADMIN_USER_ID,
+          messages: [{ type: 'text', text: `🧾 สลิปจาก ${displayName} — ${orderId}` }],
+        });
+      }
+    } catch (err) { console.error('Push admin error:', err.message); }
+  }
+
+  // แจ้งลูกค้า
   await client.pushMessage({
     to: userId,
-    messages: [
-      {
-        type: 'text',
-        text: `🛒 ได้รับออเดอร์แล้วครับ!\n\n${cartLines}\n\n💰 รวม: ${total} บาท\n⚠️ ยังไม่รวมค่าส่ง\n\n📦 กรุณาพิมพ์ที่อยู่จัดส่ง:\nชื่อ / ที่อยู่ / เบอร์โทร`,
-        quickReply: QR_CANCEL,
-      },
-    ],
+    messages: [slipReceivedFlex(orderId)],
   });
+
+  // reset state
+  resetState(userId);
+
+  return orderId;
 }
 
 module.exports = { handleMessage, handleLiffOrder };

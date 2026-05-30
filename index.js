@@ -45,8 +45,8 @@ app.post('/api/liff-order', express.json(), async (req, res) => {
       return res.status(400).json({ ok: false, error: 'invalid data' });
     }
     const { handleLiffOrder } = require('./orderManager');
-    await handleLiffOrder({ userId, displayName, items }, client);
-    res.json({ ok: true });
+    const orderId = await handleLiffOrder({ userId, displayName, items, address, slip }, client);
+    res.json({ ok: true, orderId });
   } catch (err) {
     console.error('LIFF order error:', err.message);
     res.status(500).json({ ok: false, error: err.message });
