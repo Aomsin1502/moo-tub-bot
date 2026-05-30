@@ -884,19 +884,19 @@ function orderStatusFlex(orders, status) {
       body: {
         type: 'box', layout: 'vertical', spacing: 'xs',
         contents: [
-          { type: 'text', text: '🛍 รายการสินค้า', size: 'xs', weight: 'bold', color: '#888888' },
+          { type: 'text', text: '🛍 รายการสินค้า', size: 'sm', weight: 'bold', color: '#888888' },
           ...bodyItems,
           { type: 'separator', margin: 'md' },
           {
             type: 'box', layout: 'horizontal', margin: 'sm',
             contents: [
-              { type: 'text', text: '💰 รวม', flex: 2, size: 'sm', weight: 'bold', color: '#1a1a1a' },
-              { type: 'text', text: `${o.total || 0}฿`, flex: 1, size: 'sm', weight: 'bold', align: 'end', color: '#C0392B' },
+              { type: 'text', text: '💰 รวม', flex: 2, size: 'md', weight: 'bold', color: '#1a1a1a' },
+              { type: 'text', text: `${o.total || 0}฿`, flex: 1, size: 'md', weight: 'bold', align: 'end', color: '#C0392B' },
             ],
           },
           { type: 'separator', margin: 'md' },
-          { type: 'text', text: '📍 ที่อยู่จัดส่ง', size: 'xs', weight: 'bold', color: '#888888', margin: 'sm' },
-          { type: 'text', text: safe(o.address), size: 'sm', color: '#1A5276', wrap: true, margin: 'xs' },
+          { type: 'text', text: '📍 ที่อยู่จัดส่ง', size: 'sm', weight: 'bold', color: '#888888', margin: 'sm' },
+          { type: 'text', text: safe(o.address), size: 'md', color: '#1A5276', wrap: true, margin: 'xs' },
         ],
       },
       ...(cfg.btnLabel ? {
@@ -938,14 +938,13 @@ function packingListFlex(orders) {
     const itemRows = items.map(it => ({
       type: 'box', layout: 'horizontal', paddingTop: 'xs',
       contents: [
-        { type: 'text', text: safe(`• ${it.name}`), flex: 5, size: 'sm', color: '#333333', wrap: true },
-        { type: 'text', text: `×${it.qty || 1}`, flex: 1, size: 'sm', align: 'end', color: '#555555' },
+        { type: 'text', text: safe(`• ${it.name}`), flex: 5, size: 'md', color: '#333333', wrap: true },
+        { type: 'text', text: `×${it.qty || 1}`, flex: 1, size: 'md', align: 'end', color: '#555555' },
       ],
     }));
 
-    // ถ้าไม่มี items ให้แสดง raw string แทน
     const bodyItems = itemRows.length > 0 ? itemRows : [
-      { type: 'text', text: safe(o.itemsStr), size: 'sm', color: '#333333', wrap: true },
+      { type: 'text', text: safe(o.itemsStr), size: 'md', color: '#333333', wrap: true },
     ];
 
     return {
@@ -960,19 +959,19 @@ function packingListFlex(orders) {
       body: {
         type: 'box', layout: 'vertical', spacing: 'xs',
         contents: [
-          { type: 'text', text: '🛍 รายการสินค้า', size: 'xs', weight: 'bold', color: '#888888' },
+          { type: 'text', text: '🛍 รายการสินค้า', size: 'sm', weight: 'bold', color: '#888888' },
           ...bodyItems,
           { type: 'separator', margin: 'md' },
           {
             type: 'box', layout: 'horizontal', margin: 'sm',
             contents: [
-              { type: 'text', text: '💰 รวม', flex: 2, size: 'sm', weight: 'bold', color: '#1a1a1a' },
-              { type: 'text', text: `${o.total || 0}฿`, flex: 1, size: 'sm', weight: 'bold', align: 'end', color: '#C0392B' },
+              { type: 'text', text: '💰 รวม', flex: 2, size: 'md', weight: 'bold', color: '#1a1a1a' },
+              { type: 'text', text: `${o.total || 0}฿`, flex: 1, size: 'md', weight: 'bold', align: 'end', color: '#C0392B' },
             ],
           },
           { type: 'separator', margin: 'md' },
-          { type: 'text', text: '📍 ที่อยู่จัดส่ง', size: 'xs', weight: 'bold', color: '#888888', margin: 'sm' },
-          { type: 'text', text: safe(o.address), size: 'sm', color: '#1A5276', wrap: true, margin: 'xs' },
+          { type: 'text', text: '📍 ที่อยู่จัดส่ง', size: 'sm', weight: 'bold', color: '#888888', margin: 'sm' },
+          { type: 'text', text: safe(o.address), size: 'md', color: '#1A5276', wrap: true, margin: 'xs' },
         ],
       },
       footer: {

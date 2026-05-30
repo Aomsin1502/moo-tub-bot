@@ -337,7 +337,7 @@ async function handleMessage(event, client) {
     }
 
     // ─── สรุป — ภาพรวมทุกสถานะที่ยังค้างอยู่ ─────────────────────
-    if (['สรุป', 'ออเดอร์', 'summary'].includes(lower)) {
+    if (['สรุป', 'ออเดอร์', 'summary', 'สถานะระบบ'].includes(lower)) {
       await send(client, event.replyToken, { type: 'text', text: '⏳ กำลังดึงข้อมูล...' });
       getOrdersByStatuses(['รอยืนยัน', 'รอแพค', 'รอส่ง']).then(orders => {
         if (!orders.length) return client.pushMessage({ to: userId, messages: [{ type: 'text', text: '✅ ไม่มีออเดอร์รอดำเนินการครับ' }] });
