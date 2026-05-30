@@ -1,5 +1,5 @@
 const { MENU, FLAT_ITEMS } = require('./menu');
-const { appendOrder, updateOrderStatus, getPackingOrders, getOrdersByStatus, getOrdersByStatuses } = require('./sheetsService');
+const { appendOrder, updateOrderStatus, getPackingOrders, getOrdersByStatus, getOrdersByStatuses, getOrdersByUserId } = require('./sheetsService');
 const { extractTrackingNumbers } = require('./visionService');
 const {
   welcomeFlex, cartFlex, paymentFlex,
@@ -702,17 +702,26 @@ async function handleMessage(event, client) {
     return;
   }
 
-  // ─── เช็กสถานะออเดอร์ ────────────────────────────────────────
+  // ─── เช็กสถานะออเดอร์ (อ่านจาก Sheets — รองรับหลายออเดอร์) ──
   if (['สถานะ', 'เช็กสถานะ', 'ออเดอร์ของฉัน', 'เช็คสถานะ'].includes(lower)) {
-    const lastOrderId = userLastOrder[userId];
-    if (!lastOrderId || !orderStatus[lastOrderId]) {
-      await send(client, event.replyToken, {
-        type: 'text',
-        text: '📦 ไม่พบออเดอร์ของคุณครับ\n(ข้อมูลจะหายถ้า server รีสตาร์ท)\nหากมีปัญหา กรุณาติดต่อร้านโดยตรงครับ',
-        quickReply: QR_START,
-      });
-    } else {
-      await send(client, event.replyToken, statusFlex(lastOrderId, orderStatus[lastOrderId]));
+    try {
+      const orders = await getOrdersByUserId(userId);
+      if (!orders.length) {
+        await send(client, event.replyToken, {
+          type: 'text', text: '📦 ไม่พบออเดอร์ของคุณครับ\nกรุณาติดต่อร้านโดยตรงครับ 🙏',
+          quickReply: QR_START,
+        });
+      } else if (orders.length === 1) {
+        await send(client, event.replyToken, statusFlex(orders[0].orderId, orders[0]));
+      } else {
+        // หลายออเดอร์ — ส่งทีละรายการ
+        await send(client, event.replyToken, { type: 'text', text: `📦 พบ ${orders.length} ออเดอร์ของคุณครับ` });
+        for (const o of orders) {
+          await client.pushMessage({ to: userId, messages: [statusFlex(o.orderId, o)] });
+        }
+      }
+    } catch (err) {
+      await send(client, event.replyToken, { type: 'text', text: '❌ ดึงข้อมูลไม่ได้ครับ ลองใหม่อีกครั้ง' });
     }
     return;
   }

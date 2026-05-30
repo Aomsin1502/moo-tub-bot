@@ -122,7 +122,41 @@ async function getOrdersByStatuses(statuses) {
   }
 }
 
+// ดึงออเดอร์ทั้งหมดของ userId จาก Sheets (สูงสุด 3 pending + จัดส่งล่าสุด)
+async function getOrdersByUserId(userId) {
+  const sheets = await getSheets();
+  if (!sheets) return [];
+  try {
+    const res = await sheets.spreadsheets.values.get({
+      spreadsheetId: process.env.GOOGLE_SHEET_ID,
+      range: 'ออเดอร์!A:I',
+    });
+    const rows = res.data.values || [];
+    const PENDING = new Set(['รอยืนยัน', 'รอแพค', 'รอส่ง']);
+    const all = rows
+      .filter(row => row[3] === userId)
+      .map(row => ({
+        orderId:    row[1] || '',
+        displayName: row[2] || '',
+        userId:     row[3] || '',
+        total:      Number(row[5]) || 0,
+        address:    row[6] || '',
+        status:     row[7] || '',
+        trackingNo: row[8] || '',
+      }))
+      .sort((a, b) => b.orderId.localeCompare(a.orderId));
+    // เอา pending ทั้งหมด + จัดส่งแล้วล่าสุด 1 รายการ จำกัดรวมไม่เกิน 3
+    const pending  = all.filter(o => PENDING.has(o.status)).slice(0, 3);
+    const shipped  = all.filter(o => o.status === 'จัดส่งแล้ว').slice(0, 1);
+    const result   = [...pending, ...shipped].slice(0, 3);
+    return result;
+  } catch (err) {
+    console.error('[Sheets] getOrdersByUserId error:', err.message);
+    return [];
+  }
+}
+
 // backward compat
 const getPackingOrders = () => getOrdersByStatus('รอแพค');
 
-module.exports = { appendOrder, updateOrderStatus, getPackingOrders, getOrdersByStatus, getOrdersByStatuses };
+module.exports = { appendOrder, updateOrderStatus, getPackingOrders, getOrdersByStatus, getOrdersByStatuses, getOrdersByUserId };

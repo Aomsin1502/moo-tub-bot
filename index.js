@@ -37,13 +37,17 @@ app.get('/track', (req, res) => {
   res.sendFile(require('path').join(__dirname, 'public', 'track', 'index.html'));
 });
 
-// API ดึงออเดอร์ของลูกค้า
-app.get('/api/my-orders', (req, res) => {
+// API ดึงออเดอร์ของลูกค้า (อ่านจาก Sheets — ถาวร)
+app.get('/api/my-orders', async (req, res) => {
   const { userId } = req.query;
   if (!userId) return res.status(400).json({ orders: [] });
-  const { getOrdersByUser } = require('./orderManager');
-  const orders = getOrdersByUser(userId);
-  res.json({ orders });
+  try {
+    const { getOrdersByUserId } = require('./sheetsService');
+    const orders = await getOrdersByUserId(userId);
+    res.json({ orders });
+  } catch (err) {
+    res.status(500).json({ orders: [] });
+  }
 });
 
 // LIFF Shop page
