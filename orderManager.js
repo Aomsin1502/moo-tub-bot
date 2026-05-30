@@ -162,7 +162,7 @@ async function handleMessage(event, client) {
         trackingNumbers.forEach((trackingNo, i) => {
           if (i < pendingOrders.length) {
             const o = pendingOrders[i];
-            pairs.push({ orderId: o.orderId, trackingNo, userId: o.userId, displayName: o.displayName });
+            pairs.push({ orderId: o.orderId, trackingNo, userId: o.userId, displayName: o.displayName, address: o.address || '' });
           }
         });
         const unpairedTrackings = trackingNumbers.slice(pendingOrders.length);
@@ -245,6 +245,20 @@ async function handleMessage(event, client) {
   // ─── Admin commands ────────────────────────────────────────
   if (ADMIN_USER_ID && userId === ADMIN_USER_ID) {
 
+    // ล้างประวัติทั้งหมด (สำหรับทดสอบ)
+    if (['ล้างประวัติ', 'ล้างข้อมูล', 'reset'].includes(lower)) {
+      Object.keys(orderStatus).forEach(k => delete orderStatus[k]);
+      Object.keys(userStates).forEach(k => delete userStates[k]);
+      Object.keys(userLastOrder).forEach(k => delete userLastOrder[k]);
+      Object.keys(adminPendingMatches).forEach(k => delete adminPendingMatches[k]);
+      Object.keys(adminPendingData).forEach(k => delete adminPendingData[k]);
+      Object.keys(adminTrackingQueue).forEach(k => delete adminTrackingQueue[k]);
+      await send(client, event.replyToken, {
+        type: 'text', text: '🗑 ล้างประวัติเรียบร้อยครับ\nออเดอร์และสถานะทั้งหมดถูกล้างแล้ว',
+      });
+      return;
+    }
+
     // รายการรอจัดส่ง → เริ่ม sequential tracking entry
     if (['รายการส่ง', 'รายการจัดส่ง', 'ค้างส่ง'].includes(lower)) {
       const pending = Object.entries(orderStatus)
@@ -306,7 +320,7 @@ async function handleMessage(event, client) {
       if (indices.length === orders.length && indices.every(i => i >= 0 && i < trackings.length)) {
         const newPairs = orders.map((o, i) => ({
           orderId: o.orderId, trackingNo: trackings[indices[i]],
-          userId: o.userId, displayName: o.displayName,
+          userId: o.userId, displayName: o.displayName, address: o.address || '',
         }));
         adminPendingMatches[userId] = newPairs;
         await send(client, event.replyToken,

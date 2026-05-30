@@ -721,12 +721,22 @@ function adminTrackingReviewFlex(pairs, unpairedTrackings, unpairedOrders, track
     pairs.forEach((pair, i) => {
       const letter = String.fromCharCode(65 + i); // A, B, C...
       const trackIdx = trackingList.indexOf(pair.trackingNo) + 1;
+      const addrShort = (pair.address || '').slice(0, 35);
       bodyContents.push({
-        type: 'box', layout: 'horizontal', paddingTop: 'xs', paddingBottom: 'xs',
+        type: 'box', layout: 'vertical', paddingTop: 'xs', paddingBottom: 'xs',
         contents: [
-          { type: 'text', text: `${letter}.`, flex: 0, size: 'sm', weight: 'bold', color: '#27AE60' },
-          { type: 'text', text: pair.displayName, flex: 3, size: 'sm', color: '#1a1a1a', margin: 'sm', wrap: true },
-          { type: 'text', text: `← #${trackIdx}`, flex: 1, size: 'xs', color: '#7D3C98', align: 'end', gravity: 'center' },
+          {
+            type: 'box', layout: 'horizontal',
+            contents: [
+              { type: 'text', text: `${letter}.`, flex: 0, size: 'sm', weight: 'bold', color: '#27AE60' },
+              { type: 'text', text: pair.displayName, flex: 3, size: 'sm', color: '#1a1a1a', margin: 'sm', weight: 'bold' },
+              { type: 'text', text: `← #${trackIdx}`, flex: 1, size: 'xs', color: '#7D3C98', align: 'end', gravity: 'center' },
+            ],
+          },
+          {
+            type: 'text', text: addrShort, size: 'xs', color: '#888888',
+            margin: 'xs', wrap: true,
+          },
         ],
       });
     });
