@@ -23,15 +23,15 @@ function menuFlex() {
     rows.push({
       type: 'box', layout: 'horizontal', margin: 'md',
       contents: [
-        { type: 'text', text: cat.category, size: 'sm', weight: 'bold', color: '#C0392B', flex: 1 },
+        { type: 'text', text: cat.category, size: 'md', weight: 'bold', color: '#C0392B', flex: 1 },
       ],
     });
     cat.items.forEach(item => {
       rows.push({
         type: 'box', layout: 'horizontal', paddingTop: 'xs',
         contents: [
-          { type: 'text', text: `  ${item.name}`, size: 'sm', color: '#333333', flex: 4, wrap: true },
-          { type: 'text', text: `${item.price}฿`, size: 'sm', color: '#C0392B', flex: 1, align: 'end', weight: 'bold' },
+          { type: 'text', text: `  ${item.name}`, size: 'md', color: '#333333', flex: 4, wrap: true },
+          { type: 'text', text: `${item.price}฿`, size: 'md', color: '#C0392B', flex: 1, align: 'end', weight: 'bold' },
         ],
       });
     });
