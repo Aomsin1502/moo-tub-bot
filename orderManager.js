@@ -132,11 +132,12 @@ async function handleMessage(event, client) {
         type: 'text', text: '🔍 กำลังอ่าน tracking...',
       });
       try {
-        const { trackingNumbers, rawText, imageSize, statusCode } = await extractTrackingNumbers(event.message.id);
+        const { pairs: ocrPairs, rawText, imageSize, statusCode } = await extractTrackingNumbers(event.message.id);
 
-        if (trackingNumbers.length === 0) {
+        const validPairs = ocrPairs.filter(p => p.trackingNo);
+        if (validPairs.length === 0) {
           const preview = rawText.slice(0, 300) || '(ไม่มีข้อความ)';
-          const sizekb = (imageSize / 1024).toFixed(1);
+          const sizekb  = (imageSize / 1024).toFixed(1);
           await client.pushMessage({
             to: ADMIN_USER_ID,
             messages: [{
@@ -147,22 +148,39 @@ async function handleMessage(event, client) {
           return;
         }
 
-        // ดึง orders ที่สถานะ "กำลัง Packing" เรียงตาม orderId (= ตามเวลา)
+        // ดึง orders ที่สถานะ "กำลัง Packing"
         const pendingOrders = Object.entries(orderStatus)
           .filter(([, o]) => o.status === 'กำลัง Packing')
           .sort(([a], [b]) => a.localeCompare(b))
           .map(([orderId, o]) => ({ orderId, ...o }));
 
-        // จับคู่ตามลำดับ (positional)
+        // จับคู่ด้วยชื่อผู้รับ (ดีกว่า positional)
+        const usedOrderIds = new Set();
         const pairs = [];
-        trackingNumbers.forEach((trackingNo, i) => {
-          if (i < pendingOrders.length) {
-            const o = pendingOrders[i];
-            pairs.push({ orderId: o.orderId, trackingNo, userId: o.userId, displayName: o.displayName });
+        const unpairedTrackings = [];
+
+        for (const { name, trackingNo } of validPairs) {
+          let matched = null;
+          if (name) {
+            // หา order ที่ address หรือ displayName มีชื่อผู้รับ
+            matched = pendingOrders.find(o =>
+              !usedOrderIds.has(o.orderId) &&
+              (o.address?.includes(name) || o.displayName?.includes(name))
+            );
           }
-        });
-        const unpairedTrackings = trackingNumbers.slice(pendingOrders.length);
-        const unpairedOrders   = pendingOrders.slice(trackingNumbers.length);
+          // fallback: ถ้าไม่เจอชื่อ จับ positional กับที่เหลือ
+          if (!matched) {
+            matched = pendingOrders.find(o => !usedOrderIds.has(o.orderId));
+          }
+
+          if (matched) {
+            usedOrderIds.add(matched.orderId);
+            pairs.push({ orderId: matched.orderId, trackingNo, userId: matched.userId, displayName: matched.displayName });
+          } else {
+            unpairedTrackings.push(trackingNo);
+          }
+        }
+        const unpairedOrders = pendingOrders.filter(o => !usedOrderIds.has(o.orderId));
 
         adminPendingMatches[userId] = pairs;
 
