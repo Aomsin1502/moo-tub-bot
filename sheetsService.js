@@ -73,7 +73,7 @@ async function getPackingOrders() {
   try {
     const res = await sheets.spreadsheets.values.get({
       spreadsheetId: process.env.GOOGLE_SHEET_ID,
-      range: 'ออเดอร์!A:I',
+      range: 'ออเดอร์!A:H',
     });
     const rows = res.data.values || [];
     return rows
