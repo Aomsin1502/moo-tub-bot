@@ -4,7 +4,7 @@ const { extractTrackingNumbers } = require('./visionService');
 const {
   welcomeFlex, cartFlex, paymentFlex,
   slipReceivedFlex, orderConfirmedFlex, shippedFlex,
-  menuFlex, statusFlex, cancelConfirmFlex, catalogFlex, qtyPickerFlex, adminOrderFlex, adminTrackingReviewFlex, pendingShipmentFlex,
+  menuFlex, statusFlex, cancelConfirmFlex, catalogFlex, qtyPickerFlex, adminOrderFlex, adminTrackingReviewFlex, pendingShipmentFlex, packingListFlex,
   QR_START, QR_ORDERING, QR_CONFIRM, QR_CANCEL, QR_MENU, adminQR,
 } = require('./messages');
 
@@ -256,6 +256,19 @@ async function handleMessage(event, client) {
       await send(client, event.replyToken, {
         type: 'text', text: '🗑 ล้างประวัติเรียบร้อยครับ\nออเดอร์และสถานะทั้งหมดถูกล้างแล้ว',
       });
+      return;
+    }
+
+    // ดูรายการ Packing — สินค้า + ที่อยู่ ครบในการ์ดเดียว
+    if (['packing', 'แพ็ค', 'แพ็คของ', 'จัดของ', 'ดูpacking'].includes(lower)) {
+      const orders = Object.entries(orderStatus)
+        .filter(([, o]) => o.status === 'กำลัง Packing')
+        .sort(([a], [b]) => a.localeCompare(b))
+        .map(([orderId, o]) => ({
+          orderId, displayName: o.displayName,
+          items: o.items || [], total: o.total, address: o.address || '',
+        }));
+      await send(client, event.replyToken, packingListFlex(orders));
       return;
     }
 
