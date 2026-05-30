@@ -37,8 +37,8 @@ app.get('/shop', (req, res) => {
   res.sendFile(require('path').join(__dirname, 'public', 'shop', 'index.html'));
 });
 
-// รับออเดอร์จาก LIFF
-app.post('/api/liff-order', express.json(), async (req, res) => {
+// รับออเดอร์จาก LIFF (limit 10MB สำหรับ base64 slip)
+app.post('/api/liff-order', express.json({ limit: '10mb' }), async (req, res) => {
   try {
     const { userId, displayName, items, address, slip } = req.body;
     if (!userId || !items || items.length === 0) {
