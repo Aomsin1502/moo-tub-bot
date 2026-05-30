@@ -950,4 +950,18 @@ async function handleLiffOrder({ userId, displayName, items, address, slip }, cl
   return orderId;
 }
 
-module.exports = { handleMessage, handleLiffOrder };
+function getOrdersByUser(userId) {
+  return Object.entries(orderStatus)
+    .filter(([, o]) => o.userId === userId)
+    .sort(([a], [b]) => b.localeCompare(a)) // ล่าสุดก่อน
+    .map(([orderId, o]) => ({
+      orderId,
+      status: o.status,
+      total: o.total,
+      items: o.items || [],
+      address: o.address || '',
+      trackingNo: o.trackingNo || '',
+    }));
+}
+
+module.exports = { handleMessage, handleLiffOrder, getOrdersByUser };

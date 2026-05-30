@@ -32,6 +32,20 @@ app.get('/', (req, res) => {
   res.send('🐷 หมูทุบแม่บัวเผื่อน Bot is running!');
 });
 
+// LIFF Tracking page
+app.get('/track', (req, res) => {
+  res.sendFile(require('path').join(__dirname, 'public', 'track', 'index.html'));
+});
+
+// API ดึงออเดอร์ของลูกค้า
+app.get('/api/my-orders', (req, res) => {
+  const { userId } = req.query;
+  if (!userId) return res.status(400).json({ orders: [] });
+  const { getOrdersByUser } = require('./orderManager');
+  const orders = getOrdersByUser(userId);
+  res.json({ orders });
+});
+
 // LIFF Shop page
 app.get('/shop', (req, res) => {
   res.sendFile(require('path').join(__dirname, 'public', 'shop', 'index.html'));

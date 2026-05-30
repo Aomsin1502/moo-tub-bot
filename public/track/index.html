@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>ติดตามพัสดุ — หมูทุบแม่บัวเผื่อน</title>
+<script src="https://static.line-scdn.net/liff/edge/versions/2.22.3/sdk.js"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+body{font-family:'Helvetica Neue',Arial,sans-serif;background:#f0f0f0;color:#1a1a1a;min-height:100vh}
+
+.hd{background:#C0392B;padding:20px 16px 16px;text-align:center}
+.hd h1{color:#fff;font-size:18px;font-weight:700}
+.hd p{color:#FFD0CC;font-size:12px;margin-top:4px}
+
+#loading{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:60vh;gap:16px}
+.spin{width:44px;height:44px;border:4px solid #f0f0f0;border-top-color:#C0392B;border-radius:50%;animation:sp .8s linear infinite}
+@keyframes sp{to{transform:rotate(360deg)}}
+
+.content{padding:16px}
+
+.no-order{text-align:center;padding:48px 24px}
+.no-order .icon{font-size:64px;margin-bottom:16px}
+.no-order h3{font-size:18px;font-weight:700;color:#555;margin-bottom:8px}
+.no-order p{font-size:14px;color:#888;line-height:1.6}
+
+.order-card{background:#fff;border-radius:16px;margin-bottom:16px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,.08)}
+.order-header{padding:16px;display:flex;align-items:center;gap:12px}
+.status-dot{width:12px;height:12px;border-radius:50%;flex-shrink:0}
+.order-id{font-size:13px;color:#888;flex:1}
+.status-badge{padding:4px 12px;border-radius:20px;font-size:12px;font-weight:700}
+
+.order-body{padding:0 16px 16px;border-top:1px solid #f5f5f5}
+
+.items-list{padding:12px 0}
+.item-row{display:flex;justify-content:space-between;align-items:center;padding:4px 0;font-size:13px}
+.item-name{color:#555}
+.item-price{font-weight:600;color:#1a1a1a}
+
+.total-row{display:flex;justify-content:space-between;border-top:1px dashed #eee;padding-top:10px;margin-top:6px}
+.total-label{font-size:14px;font-weight:700}
+.total-val{font-size:16px;font-weight:700;color:#C0392B}
+
+.tracking-box{background:#F4ECF7;border-radius:12px;padding:14px;margin-top:12px;text-align:center}
+.tracking-label{font-size:11px;color:#7D3C98;font-weight:700;margin-bottom:6px;text-transform:uppercase;letter-spacing:.5px}
+.tracking-num{font-size:22px;font-weight:700;color:#7D3C98;letter-spacing:1px;cursor:pointer;user-select:none}
+.copy-hint{font-size:11px;color:#A569BD;margin-top:4px}
+
+.track-btn{display:block;background:#C0392B;color:#fff;border:none;border-radius:12px;padding:14px;font-size:15px;font-weight:700;text-align:center;text-decoration:none;margin-top:12px;cursor:pointer;width:100%}
+.track-btn:active{opacity:.8}
+
+.addr-box{background:#EBF5FB;border-radius:10px;padding:12px;margin-top:12px;font-size:13px;color:#1A5276;line-height:1.6}
+.addr-label{font-size:11px;font-weight:700;color:#1A5276;margin-bottom:4px;text-transform:uppercase;letter-spacing:.5px}
+
+.progress{display:flex;align-items:center;margin-top:12px}
+.prog-step{flex:1;text-align:center;position:relative}
+.prog-step:not(:last-child)::after{content:'';position:absolute;top:10px;left:50%;width:100%;height:2px;background:#eee;z-index:0}
+.prog-dot{width:20px;height:20px;border-radius:50%;margin:0 auto 4px;position:relative;z-index:1;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;color:#fff}
+.prog-dot.done{background:#27AE60}
+.prog-dot.active{background:#C0392B}
+.prog-dot.wait{background:#ddd;color:#999}
+.prog-label{font-size:10px;color:#888}
+.prog-label.done{color:#27AE60;font-weight:600}
+.prog-label.active{color:#C0392B;font-weight:700}
+
+.shop-btn{display:block;background:#fff;color:#C0392B;border:2px solid #C0392B;border-radius:12px;padding:14px;font-size:15px;font-weight:700;text-align:center;text-decoration:none;margin-top:8px;cursor:pointer;width:100%}
+</style>
+</head>
+<body>
+
+<div class="hd">
+  <h1>🐷 ติดตามพัสดุ</h1>
+  <p>หมูทุบแม่บัวเผื่อน • ชุมพร</p>
+</div>
+
+<div id="loading">
+  <div class="spin"></div>
+  <p style="color:#888;font-size:14px">กำลังโหลดข้อมูล...</p>
+</div>
+
+<div id="content" style="display:none" class="content"></div>
+
+<script>
+const LIFF_ID = 'TRACKING_LIFF_ID';
+const STATUS_CONFIG = {
+  'รอยืนยัน':        {color:'#E67E22',dot:'#E67E22',badge:'#FEF0E6',bcolor:'#E67E22',steps:[1,0,0,0]},
+  'กำลัง Packing':   {color:'#2980B9',dot:'#2980B9',badge:'#EBF5FB',bcolor:'#2980B9',steps:[1,1,0,0]},
+  'รออนุมัติยกเลิก': {color:'#7F8C8D',dot:'#7F8C8D',badge:'#F2F3F4',bcolor:'#7F8C8D',steps:[1,0,0,0]},
+  'จัดส่งแล้ว':      {color:'#7D3C98',dot:'#7D3C98',badge:'#F4ECF7',bcolor:'#7D3C98',steps:[1,1,1,0]},
+  'ยกเลิก':          {color:'#95A5A6',dot:'#95A5A6',badge:'#F2F3F4',bcolor:'#95A5A6',steps:[0,0,0,0]},
+};
+const STEPS = ['รับออเดอร์','ยืนยัน','จัดส่ง','ถึงมือ'];
+
+function copyText(text){
+  navigator.clipboard.writeText(text).then(()=>{
+    const el=document.getElementById('copyHint');
+    if(el){el.textContent='✅ คัดลอกแล้ว!';setTimeout(()=>{el.textContent='แตะตัวเลขเพื่อคัดลอก';},2000);}
+  }).catch(()=>alert('เลข tracking: '+text));
+}
+
+function buildOrders(orders){
+  const el=document.getElementById('content');
+  if(!orders||orders.length===0){
+    el.innerHTML=`<div class="no-order">
+      <div class="icon">📦</div>
+      <h3>ยังไม่มีออเดอร์</h3>
+      <p>เริ่มสั่งสินค้าได้เลยครับ<br>กดปุ่ม "สั่งสินค้า" ที่เมนูด้านล่าง</p>
+    </div>
+    <a href="https://liff.line.me/2010237396-QOmKN3ML" class="track-btn">🛒 ไปสั่งสินค้า</a>`;
+    return;
+  }
+
+  el.innerHTML = orders.map(order=>{
+    const cfg = STATUS_CONFIG[order.status] || STATUS_CONFIG['รอยืนยัน'];
+    const items = (order.items||[]).map(i=>`
+      <div class="item-row">
+        <span class="item-name">${i.name} ×${i.qty}</span>
+        <span class="item-price">฿${(i.price*i.qty).toLocaleString()}</span>
+      </div>`).join('');
+
+    const stepsHtml = STEPS.map((s,i)=>{
+      const state = cfg.steps[i]===1?'done':(i===cfg.steps.indexOf(0)&&i>0?'active':'wait');
+      return `<div class="prog-step">
+        <div class="prog-dot ${state}">${state==='done'?'✓':i+1}</div>
+        <div class="prog-label ${state}">${s}</div>
+      </div>`;
+    }).join('');
+
+    const trackingHtml = order.trackingNo ? `
+      <div class="tracking-box">
+        <div class="tracking-label">📮 เลขพัสดุไปรษณีไทย</div>
+        <div class="tracking-num" onclick="copyText('${order.trackingNo}')">${order.trackingNo}</div>
+        <div class="copy-hint" id="copyHint">แตะตัวเลขเพื่อคัดลอก</div>
+      </div>
+      <a href="https://track.thailandpost.co.th/?barcode=${order.trackingNo}" class="track-btn" target="_blank">🚚 ติดตามพัสดุไปรษณีไทย</a>
+    ` : '';
+
+    return `<div class="order-card">
+      <div class="order-header">
+        <div class="status-dot" style="background:${cfg.dot}"></div>
+        <div class="order-id">${order.orderId}</div>
+        <div class="status-badge" style="background:${cfg.badge};color:${cfg.bcolor}">${order.status}</div>
+      </div>
+      <div class="order-body">
+        <div class="progress">${stepsHtml}</div>
+        <div class="items-list">${items}</div>
+        <div class="total-row">
+          <span class="total-label">ยอดรวม</span>
+          <span class="total-val">฿${(order.total||0).toLocaleString()}</span>
+        </div>
+        ${order.address?`<div class="addr-box"><div class="addr-label">📦 ที่อยู่จัดส่ง</div>${order.address}</div>`:''}
+        ${trackingHtml}
+      </div>
+    </div>`;
+  }).join('');
+
+  el.innerHTML += `<a href="https://liff.line.me/2010237396-QOmKN3ML" class="shop-btn">🛒 สั่งสินค้าเพิ่ม</a>`;
+}
+
+async function init(){
+  try{
+    await liff.init({liffId: LIFF_ID});
+    if(!liff.isLoggedIn()){liff.login();return;}
+    const profile = await liff.getProfile();
+    const res = await fetch('/api/my-orders?userId='+encodeURIComponent(profile.userId));
+    const data = await res.json();
+    document.getElementById('loading').style.display='none';
+    document.getElementById('content').style.display='block';
+    buildOrders(data.orders);
+  }catch(e){
+    document.getElementById('loading').innerHTML=`<p style="color:#E74C3C;padding:24px;text-align:center">เกิดข้อผิดพลาด<br>${e.message}</p>`;
+  }
+}
+init();
+</script>
+</body>
+</html>
