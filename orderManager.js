@@ -1,5 +1,5 @@
 const { MENU, FLAT_ITEMS } = require('./menu');
-const { appendOrder, updateOrderStatus, getPackingOrders } = require('./sheetsService');
+const { appendOrder, updateOrderStatus, getPackingOrders, getOrdersByStatus } = require('./sheetsService');
 const { extractTrackingNumbers } = require('./visionService');
 const {
   welcomeFlex, cartFlex, paymentFlex,
@@ -15,7 +15,7 @@ const ADMIN_USER_ID = process.env.ADMIN_USER_ID || '';
 const userStates = {};
 
 // orderId → { userId, displayName, status, total, items, address, trackingNo }
-// status: รอยืนยัน | กำลัง Packing | รออนุมัติยกเลิก | จัดส่งแล้ว | ยกเลิก
+// status: รอยืนยัน | กำลัง Packing | รอส่ง | รออนุมัติยกเลิก | จัดส่งแล้ว | ยกเลิก
 const orderStatus = {};
 
 // userId → orderId (most recent placed order)
@@ -151,8 +151,8 @@ async function handleMessage(event, client) {
           return;
         }
 
-        // ดึง orders "กำลัง Packing" จาก Sheets (ไม่หายถ้า restart)
-        const sheetPackingOrders = await getPackingOrders();
+        // ดึง orders "รอส่ง" จาก Sheets (ไม่หายถ้า restart)
+        const sheetPackingOrders = await getOrdersByStatus('รอส่ง');
         const pendingOrders = sheetPackingOrders
           .sort((a, b) => a.orderId.localeCompare(b.orderId))
           .map(o => ({ orderId: o.orderId, userId: o.userId, displayName: o.displayName, address: o.address, total: o.total }));
@@ -246,6 +246,19 @@ async function handleMessage(event, client) {
   if (ADMIN_USER_ID && userId === ADMIN_USER_ID) {
 
     // ล้างประวัติทั้งหมด (สำหรับทดสอบ)
+    // พร้อมส่ง ORD... → เปลี่ยนสถานะ "รอส่ง"
+    const readyMatch = text.match(/^พร้อมส่ง\s+(ORD\S+)/i);
+    if (readyMatch) {
+      const orderId = readyMatch[1].toUpperCase();
+      await updateOrderStatus(orderId, 'รอส่ง');
+      if (orderStatus[orderId]) orderStatus[orderId].status = 'รอส่ง';
+      await send(client, event.replyToken, {
+        type: 'text',
+        text: `✅ ${orderId}\nสถานะ → 📫 รอส่งไปรษณีย์แล้วครับ`,
+      });
+      return;
+    }
+
     if (['ล้างประวัติ', 'ล้างข้อมูล', 'reset'].includes(lower)) {
       Object.keys(orderStatus).forEach(k => delete orderStatus[k]);
       Object.keys(userStates).forEach(k => delete userStates[k]);
@@ -294,7 +307,7 @@ async function handleMessage(event, client) {
     // รายการรอจัดส่ง → เริ่ม sequential tracking entry (อ่านจาก Sheets)
     if (['รายการส่ง', 'รายการจัดส่ง', 'ค้างส่ง'].includes(lower)) {
       await send(client, event.replyToken, { type: 'text', text: '⏳ กำลังดึงรายการจาก Sheets...' });
-      const sheetPending = await getPackingOrders();
+      const sheetPending = await getOrdersByStatus('รอส่ง');
       const pending = sheetPending
         .sort((a, b) => a.orderId.localeCompare(b.orderId))
         .map(o => ({ orderId: o.orderId, displayName: o.displayName, total: o.total, userId: o.userId, address: o.address || '' }));
@@ -627,13 +640,14 @@ async function handleMessage(event, client) {
         quickReply: QR_START,
       });
     } else {
-      // ยกเลิกระหว่าง Packing — ต้องรอ admin อนุมัติ
+      // ยกเลิกระหว่าง Packing / รอส่ง — ต้องรอ admin อนุมัติ
       if (order) order.status = 'รออนุมัติยกเลิก';
+      const statusLabel = order?.status === 'รอส่ง' ? 'รอส่งไปรษณีย์' : 'กำลัง Packing';
       if (ADMIN_USER_ID) {
         try {
           await client.pushMessage({
             to: ADMIN_USER_ID,
-            messages: [{ type: 'text', text: `🚨 ลูกค้า "${state.displayName}" ขอยกเลิกออเดอร์ #${orderId}\n📦 ขณะกำลัง Packing — มีค่า Packing\n\nพิมพ์ "อนุมัติยกเลิก ${orderId}" เพื่ออนุมัติ` }],
+            messages: [{ type: 'text', text: `🚨 ลูกค้า "${state.displayName}" ขอยกเลิกออเดอร์ #${orderId}\n📦 ขณะ${statusLabel} — มีค่า Packing\n\nพิมพ์ "อนุมัติยกเลิก ${orderId}" เพื่ออนุมัติ` }],
           });
         } catch (err) {}
       }

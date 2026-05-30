@@ -66,8 +66,8 @@ async function updateOrderStatus(orderId, status, trackingNo = '') {
   }
 }
 
-// อ่านออเดอร์ที่สถานะ "กำลัง Packing" จาก Sheets
-async function getPackingOrders() {
+// อ่านออเดอร์ตาม status จาก Sheets
+async function getOrdersByStatus(status) {
   const sheets = await getSheets();
   if (!sheets) return [];
   try {
@@ -77,7 +77,7 @@ async function getPackingOrders() {
     });
     const rows = res.data.values || [];
     return rows
-      .filter(row => row[7] === 'กำลัง Packing')
+      .filter(row => row[7] === status)
       .map(row => ({
         orderId:     row[1] || '',
         displayName: row[2] || '',
@@ -88,9 +88,12 @@ async function getPackingOrders() {
         status:      row[7] || '',
       }));
   } catch (err) {
-    console.error('[Sheets] getPackingOrders error:', err.message);
+    console.error(`[Sheets] getOrdersByStatus(${status}) error:`, err.message);
     return [];
   }
 }
 
-module.exports = { appendOrder, updateOrderStatus, getPackingOrders };
+// backward compat
+const getPackingOrders = () => getOrdersByStatus('กำลัง Packing');
+
+module.exports = { appendOrder, updateOrderStatus, getPackingOrders, getOrdersByStatus };

@@ -85,11 +85,12 @@ const LIFF_ID = '2010237396-Z3MBdmtP';
 const STATUS_CONFIG = {
   'รอยืนยัน':        {color:'#E67E22',dot:'#E67E22',badge:'#FEF0E6',bcolor:'#E67E22',steps:[1,0,0,0]},
   'กำลัง Packing':   {color:'#2980B9',dot:'#2980B9',badge:'#EBF5FB',bcolor:'#2980B9',steps:[1,1,0,0]},
+  'รอส่ง':           {color:'#1A5276',dot:'#1A5276',badge:'#D6EAF8',bcolor:'#1A5276',steps:[1,1,1,0]},
   'รออนุมัติยกเลิก': {color:'#7F8C8D',dot:'#7F8C8D',badge:'#F2F3F4',bcolor:'#7F8C8D',steps:[1,0,0,0]},
-  'จัดส่งแล้ว':      {color:'#7D3C98',dot:'#7D3C98',badge:'#F4ECF7',bcolor:'#7D3C98',steps:[1,1,1,0]},
+  'จัดส่งแล้ว':      {color:'#7D3C98',dot:'#7D3C98',badge:'#F4ECF7',bcolor:'#7D3C98',steps:[1,1,1,1]},
   'ยกเลิก':          {color:'#95A5A6',dot:'#95A5A6',badge:'#F2F3F4',bcolor:'#95A5A6',steps:[0,0,0,0]},
 };
-const STEPS = ['รับออเดอร์','ยืนยัน','จัดส่ง','ถึงมือ'];
+const STEPS = ['รับออเดอร์','ยืนยัน','รอส่ง','จัดส่งแล้ว'];
 
 function copyText(text){
   navigator.clipboard.writeText(text).then(()=>{
