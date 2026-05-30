@@ -4,7 +4,7 @@ const { extractTrackingNumbers } = require('./visionService');
 const {
   welcomeFlex, cartFlex, paymentFlex,
   slipReceivedFlex, orderConfirmedFlex, shippedFlex,
-  menuFlex, statusFlex, cancelConfirmFlex, catalogFlex, qtyPickerFlex, adminOrderFlex, adminTrackingReviewFlex, pendingShipmentFlex, packingListFlex, pendingOrdersOverviewFlex, pendingOrdersCarouselFlex, orderStatusFlex,
+  menuFlex, statusFlex, cancelConfirmFlex, catalogFlex, qtyPickerFlex, adminOrderFlex, adminTrackingReviewFlex, pendingShipmentFlex, packingListFlex, pendingOrdersOverviewFlex, pendingOrdersCarouselFlex, orderStatusFlex, confirmDoneFlex,
   QR_START, QR_ORDERING, QR_CONFIRM, QR_CANCEL, QR_MENU, adminQR,
 } = require('./messages');
 
@@ -378,10 +378,10 @@ async function handleMessage(event, client) {
       const orderId = readyMatch[1].toUpperCase();
       await updateOrderStatus(orderId, 'รอส่ง');
       if (orderStatus[orderId]) orderStatus[orderId].status = 'รอส่ง';
-      await send(client, event.replyToken, {
-        type: 'text',
-        text: `✅ ${orderId}\nสถานะ → 📫 รอส่งไปรษณีย์แล้วครับ`,
-      });
+      const dName = orderStatus[orderId]?.displayName || '';
+      await send(client, event.replyToken,
+        confirmDoneFlex(orderId, dName, '📫 พร้อมส่งแล้ว → รอส่ง', '#1A5276')
+      );
       return;
     }
 
@@ -568,10 +568,10 @@ async function handleMessage(event, client) {
         try { await client.pushMessage({ to: custId, messages: [orderConfirmedFlex(orderId)] }); }
         catch (err) { console.error('Push customer error:', err.message); }
       }
-      await send(client, event.replyToken, {
-        type: 'text',
-        text: `✅ ยืนยัน #${orderId}\nสถานะ → รอแพค\nอัปเดต Sheets แล้วครับ`,
-      });
+      const displayName = orderStatus[orderId]?.displayName || '';
+      await send(client, event.replyToken,
+        confirmDoneFlex(orderId, displayName, '✅ ยืนยันแล้ว → รอแพค', '#27AE60')
+      );
       return;
     }
 

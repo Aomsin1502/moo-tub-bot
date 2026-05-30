@@ -754,6 +754,24 @@ function pendingOrdersCarouselFlex(orders) {
   };
 }
 
+// การ์ดแสดงผลหลังกดปุ่ม — บอกว่ากดแล้ว เปลี่ยนสีให้แตกต่าง
+function confirmDoneFlex(orderId, displayName, label, color) {
+  return {
+    type: 'flex',
+    altText: `${label} ${orderId}`,
+    contents: {
+      type: 'bubble',
+      header: {
+        type: 'box', layout: 'vertical', backgroundColor: color, paddingAll: '14px',
+        contents: [
+          { type: 'text', text: label, weight: 'bold', color: '#FFFFFF', size: 'lg' },
+          { type: 'text', text: `#${orderId}  ${displayName || ''}`, color: 'rgba(255,255,255,0.8)', size: 'xs', margin: 'xs' },
+        ],
+      },
+    },
+  };
+}
+
 function pendingOrdersOverviewFlex(orders) {
   if (orders.length === 0) {
     return {
@@ -1216,6 +1234,7 @@ module.exports = {
   adminTrackingReviewFlex,
   pendingShipmentFlex,
   packingListFlex,
+  confirmDoneFlex,
   pendingOrdersOverviewFlex,
   pendingOrdersCarouselFlex,
   orderStatusFlex,
