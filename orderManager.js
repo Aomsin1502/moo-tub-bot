@@ -291,8 +291,22 @@ async function handleMessage(event, client) {
     if (['ออเดอร์', 'orders', 'listorder', 'รายการออเดอร์', 'ดูออเดอร์'].includes(lower)) {
       await send(client, event.replyToken, { type: 'text', text: '⏳ กำลังดึงข้อมูล...' });
       getOrdersByStatuses(['รอยืนยัน', 'กำลัง Packing', 'รอส่ง']).then(orders => {
-        return client.pushMessage({ to: userId, messages: [pendingOrdersOverviewFlex(orders)] });
+        if (orders.length === 0) {
+          return client.pushMessage({ to: userId, messages: [{ type: 'text', text: '✅ ไม่มีออเดอร์รอดำเนินการครับ' }] });
+        }
+        const ICONS = { 'รอยืนยัน': '⏳', 'กำลัง Packing': '📦', 'รอส่ง': '📫' };
+        const byStatus = {};
+        orders.forEach(o => { if (!byStatus[o.status]) byStatus[o.status] = []; byStatus[o.status].push(o); });
+        let text = `📋 ออเดอร์รอดำเนินการ (${orders.length} รายการ)\n`;
+        ['รอยืนยัน', 'กำลัง Packing', 'รอส่ง'].forEach(s => {
+          const list = byStatus[s] || [];
+          if (!list.length) return;
+          text += `\n${ICONS[s]} ${s} (${list.length})\n`;
+          list.forEach(o => { text += `  • ${o.displayName}  ${o.total}฿\n`; });
+        });
+        return client.pushMessage({ to: userId, messages: [{ type: 'text', text: text.trim() }] });
       }).catch(err => {
+        console.error('[orders]', err.message);
         client.pushMessage({ to: userId, messages: [{ type: 'text', text: `❌ error: ${err.message}` }] });
       });
       return;
