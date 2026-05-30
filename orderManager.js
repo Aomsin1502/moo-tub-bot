@@ -49,6 +49,44 @@ function isOpenNow() {
   return bkkHour >= 8 && bkkHour < 20;
 }
 
+// วันหยุดนักขัตฤกษ์ไทย (MM-DD) — ปรับทุกปี
+const THAI_HOLIDAYS = new Set([
+  '01-01', // ขึ้นปีใหม่
+  '04-06', // วันจักรี
+  '04-13','04-14','04-15', // สงกรานต์
+  '05-01', // วันแรงงาน
+  '08-12', // วันแม่
+  '10-13', // วันนวมินทร์มหาราช
+  '10-23', // วันปิยมหาราช
+  '12-05', // วันพ่อ / วันชาติ
+  '12-10', // วันรัฐธรรมนูญ
+  '12-31', // วันสิ้นปี
+]);
+
+function isHolidayDate(d) {
+  const mm = String(d.getUTCMonth() + 1).padStart(2, '0');
+  const dd = String(d.getUTCDate()).padStart(2, '0');
+  return d.getUTCDay() === 0 || THAI_HOLIDAYS.has(`${mm}-${dd}`);
+}
+
+// คืนข้อความแจ้งลูกค้าถ้าวันนี้ไม่จัดส่ง
+function getShippingNote() {
+  const now  = new Date();
+  const bkk  = new Date(now.getTime() + 7 * 60 * 60 * 1000); // UTC+7
+  if (!isHolidayDate(bkk)) return ''; // วันทำงานปกติ
+
+  const dayType = bkk.getUTCDay() === 0 ? 'วันอาทิตย์' : 'วันหยุดนักขัตฤกษ์';
+
+  // หาวันทำการถัดไป
+  const next = new Date(bkk);
+  do { next.setUTCDate(next.getUTCDate() + 1); } while (isHolidayDate(next));
+
+  const DAYS = ['อาทิตย์','จันทร์','อังคาร','พุธ','พฤหัส','ศุกร์','เสาร์'];
+  const nextStr = `วัน${DAYS[next.getUTCDay()]}ที่ ${next.getUTCDate()}/${next.getUTCMonth() + 1}`;
+
+  return `\n\n📅 วันนี้${dayType} — ไม่มีการจัดส่ง\nออเดอร์จะจัดส่ง${nextStr} ครับ 🙏`;
+}
+
 function generateOrderId() {
   const d = new Date();
   const pad = n => String(n).padStart(2, '0');
@@ -225,7 +263,10 @@ async function handleMessage(event, client) {
         } catch (err) { console.error('Push admin error:', err.message); }
       }
 
-      await send(client, event.replyToken, slipReceivedFlex(orderId));
+      const shipNote = getShippingNote();
+      const msgs = [slipReceivedFlex(orderId)];
+      if (shipNote) msgs.push({ type: 'text', text: `📅 แจ้งเพื่อทราบ${shipNote}` });
+      await send(client, event.replyToken, msgs);
       resetState(userId);
       return;
     }
@@ -734,10 +775,11 @@ async function handleMessage(event, client) {
       const offHoursNote = !isOpenNow()
         ? '\n\n⏰ ขณะนี้นอกเวลาทำการ (08:00–20:00 น.)\nร้านจะดำเนินการในวันทำการถัดไปครับ 🙏'
         : '';
+      const holidayNote = getShippingNote();
       try {
         await send(client, event.replyToken, [
           catalogFlex(),
-          { type: 'text', text: `🛒 กด 1 / 2 / 3 ชิ้น ที่สินค้าที่ต้องการครับ!${offHoursNote}`, quickReply: QR_ORDERING },
+          { type: 'text', text: `🛒 กด 1 / 2 / 3 ชิ้น ที่สินค้าที่ต้องการครับ!${offHoursNote}${holidayNote}`, quickReply: QR_ORDERING },
         ]);
       } catch (err) {
         console.error('catalogFlex error:', err.message);
@@ -1029,10 +1071,10 @@ async function handleLiffOrder({ userId, displayName, items, address, slip }, cl
   }
 
   // แจ้งลูกค้า
-  await client.pushMessage({
-    to: userId,
-    messages: [slipReceivedFlex(orderId)],
-  });
+  const shipNote = getShippingNote();
+  const liffMsgs = [slipReceivedFlex(orderId)];
+  if (shipNote) liffMsgs.push({ type: 'text', text: `📅 แจ้งเพื่อทราบ${shipNote}` });
+  await client.pushMessage({ to: userId, messages: liffMsgs });
 
   // reset state
   resetState(userId);
