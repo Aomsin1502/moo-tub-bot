@@ -1,4 +1,5 @@
 const PROMPTPAY = process.env.PROMPTPAY_NUMBER || '0931726399';
+const { calcShipping } = require('./menu');
 
 // ─── แคตตาล็อกสินค้า ────────────────────────────────────────────────────────
 // รูปอยู่ที่ /public/images/ — serve ผ่าน https://moo-tub-bot.onrender.com/images/
@@ -150,11 +151,31 @@ function cartFlex(cart, showConfirmButtons = false) {
             layout: 'horizontal',
             margin: 'md',
             contents: [
-              { type: 'text', text: '💰 รวมทั้งหมด', weight: 'bold', flex: 3 },
+              { type: 'text', text: '💰 รวมสินค้า', weight: 'bold', flex: 3 },
               { type: 'text', text: `${total} บาท`, weight: 'bold', color: '#C0392B', flex: 1, align: 'end', size: 'lg' },
             ],
           },
-          { type: 'text', text: '⚠️ ค่าส่งไปรษณีไทย คิดแยกต่างหาก', size: 'xs', color: '#888888', margin: 'sm' },
+          (() => {
+            const { totalWeight, fee } = calcShipping(cart);
+            const kg = (totalWeight / 1000).toFixed(2).replace(/\.?0+$/, '');
+            return {
+              type: 'box', layout: 'horizontal', margin: 'xs',
+              contents: [
+                { type: 'text', text: `🚚 ค่าส่ง (~${kg} กก)`, flex: 3, size: 'sm', color: '#555555' },
+                { type: 'text', text: `${fee} บาท`, flex: 1, align: 'end', size: 'sm', color: '#555555' },
+              ],
+            };
+          })(),
+          (() => {
+            const { fee } = calcShipping(cart);
+            return {
+              type: 'box', layout: 'horizontal', margin: 'xs',
+              contents: [
+                { type: 'text', text: '💳 รวมจ่ายทั้งหมด', weight: 'bold', flex: 3, color: '#1A5276' },
+                { type: 'text', text: `${total + fee} บาท`, weight: 'bold', flex: 1, align: 'end', size: 'lg', color: '#1A5276' },
+              ],
+            };
+          })(),
         ],
       },
       ...(showConfirmButtons ? {
@@ -169,10 +190,13 @@ function cartFlex(cart, showConfirmButtons = false) {
   };
 }
 
-function paymentFlex(orderId, total) {
+function paymentFlex(orderId, total, cart = []) {
+  const { totalWeight, fee } = calcShipping(cart);
+  const grandTotal = total + fee;
+  const kg = (totalWeight / 1000).toFixed(2).replace(/\.?0+$/, '');
   return {
     type: 'flex',
-    altText: `💳 ชำระเงิน ออเดอร์ #${orderId} ยอด ${total} บาท`,
+    altText: `💳 ชำระเงิน ออเดอร์ #${orderId} ยอดรวม ${grandTotal} บาท`,
     contents: {
       type: 'bubble',
       header: {
@@ -191,14 +215,26 @@ function paymentFlex(orderId, total) {
         spacing: 'md',
         contents: [
           {
-            type: 'box',
-            layout: 'horizontal',
+            type: 'box', layout: 'horizontal',
             contents: [
               { type: 'text', text: '💰 ยอดสินค้า', flex: 2, color: '#555555' },
               { type: 'text', text: `${total} บาท`, flex: 1, align: 'end', weight: 'bold', color: '#C0392B', size: 'lg' },
             ],
           },
-          { type: 'text', text: '⚠️ ค่าส่งไปรษณีไทย แจ้งแยกต่างหาก', size: 'xs', color: '#E74C3C', wrap: true },
+          {
+            type: 'box', layout: 'horizontal',
+            contents: [
+              { type: 'text', text: `🚚 ค่าส่ง (~${kg} กก)`, flex: 2, color: '#555555', size: 'sm' },
+              { type: 'text', text: `${fee} บาท`, flex: 1, align: 'end', color: '#555555', size: 'sm' },
+            ],
+          },
+          {
+            type: 'box', layout: 'horizontal', backgroundColor: '#EBF5FB', paddingAll: '10px',
+            contents: [
+              { type: 'text', text: '💳 รวมโอน', flex: 2, weight: 'bold', color: '#1A5276' },
+              { type: 'text', text: `${grandTotal} บาท`, flex: 1, align: 'end', weight: 'bold', color: '#1A5276', size: 'xl' },
+            ],
+          },
           { type: 'separator', margin: 'md' },
           { type: 'text', text: '📱 โอนผ่าน PromptPay', weight: 'bold', margin: 'md' },
           {

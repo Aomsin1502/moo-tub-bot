@@ -759,7 +759,7 @@ async function handleMessage(event, client) {
     state.orderId = generateOrderId();
     state.state = 'waiting_slip';
     const total = state.cart.reduce((sum, i) => sum + i.price * i.qty, 0);
-    await send(client, event.replyToken, paymentFlex(state.orderId, total));
+    await send(client, event.replyToken, paymentFlex(state.orderId, total, state.cart));
     return;
   }
 
