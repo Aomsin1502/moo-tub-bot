@@ -173,7 +173,7 @@ async function handleMessage(event, client) {
 
         await client.pushMessage({
           to: ADMIN_USER_ID,
-          messages: [adminTrackingReviewFlex(pairs, unpairedTrackings, unpairedOrders, trackingNumbers)],
+          messages: [adminTrackingReviewFlex(pairs, unpairedTrackings, unpairedOrders, trackingNumbers, pendingOrders)],
         });
       } catch (err) {
         console.error('[Admin OCR error]', err.message);
@@ -397,7 +397,7 @@ async function handleMessage(event, client) {
 
       adminPendingMatches[userId] = newPairs;
       adminPendingData[userId].allOrders = allOrders;
-      await send(client, event.replyToken, adminTrackingReviewFlex(newPairs, [], newUnpaired, trackings));
+      await send(client, event.replyToken, adminTrackingReviewFlex(newPairs, [], newUnpaired, trackings, allOrders));
       return;
     }
 

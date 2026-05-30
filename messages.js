@@ -821,10 +821,16 @@ function pendingShipmentFlex(orders) {
   };
 }
 
-function adminTrackingReviewFlex(pairs, unpairedTrackings, unpairedOrders, trackingList = []) {
+// allOrders = ออเดอร์ทั้งหมดเรียงตาม orderId → ตัวอักษร A,B,C... คงที่ตลอด
+function adminTrackingReviewFlex(pairs, unpairedTrackings, unpairedOrders, trackingList = [], allOrders = null) {
   const bodyContents = [];
+  const allOrd  = allOrders || [...pairs, ...unpairedOrders];
+  const pairMap = {}; // orderId → trackingNo
+  pairs.forEach(p => { pairMap[p.orderId] = p.trackingNo; });
+  const tIdx = {}; // trackingNo → display index
+  trackingList.forEach((t, i) => { tIdx[t] = i + 1; });
 
-  // แสดง tracking list แบบมีหมายเลข (สำหรับเรียงลำดับใหม่)
+  // tracking numbers
   if (trackingList.length > 0) {
     bodyContents.push({ type: 'text', text: '📦 Tracking ที่อ่านได้:', size: 'xs', weight: 'bold', color: '#555555' });
     trackingList.forEach((t, i) => {
@@ -840,32 +846,28 @@ function adminTrackingReviewFlex(pairs, unpairedTrackings, unpairedOrders, track
     bodyContents.push({ type: 'separator', margin: 'md' });
   }
 
-  // แสดงจับคู่ปัจจุบัน
-  if (pairs.length > 0) {
-    bodyContents.push({ type: 'text', text: '👤 จับคู่กับออเดอร์:', size: 'xs', weight: 'bold', color: '#555555', margin: 'sm' });
-    pairs.forEach((pair, i) => {
-      const letter = String.fromCharCode(65 + i); // A, B, C...
-      const trackIdx = trackingList.indexOf(pair.trackingNo) + 1;
-      const addrShort = (pair.address || '').slice(0, 35);
-      bodyContents.push({
-        type: 'box', layout: 'vertical', paddingTop: 'xs', paddingBottom: 'xs',
-        contents: [
-          {
-            type: 'box', layout: 'horizontal',
-            contents: [
-              { type: 'text', text: `${letter}.`, flex: 0, size: 'sm', weight: 'bold', color: '#27AE60' },
-              { type: 'text', text: pair.displayName, flex: 3, size: 'sm', color: '#1a1a1a', margin: 'sm', weight: 'bold' },
-              { type: 'text', text: `← #${trackIdx}`, flex: 1, size: 'xs', color: '#7D3C98', align: 'end', gravity: 'center' },
-            ],
-          },
-          {
-            type: 'text', text: addrShort, size: 'xs', color: '#888888',
-            margin: 'xs', wrap: true,
-          },
-        ],
-      });
+  // ออเดอร์ทั้งหมด — ตัวอักษรคงที่ตามตำแหน่งใน allOrd
+  bodyContents.push({ type: 'text', text: '👤 ออเดอร์ทั้งหมด:', size: 'xs', weight: 'bold', color: '#555555', margin: 'sm' });
+  allOrd.forEach((o, i) => {
+    const letter   = String.fromCharCode(65 + i);
+    const tNo      = pairMap[o.orderId];
+    const isPaired = !!tNo;
+    const addr     = (o.address || '').slice(0, 40);
+    bodyContents.push({
+      type: 'box', layout: 'vertical', paddingTop: 'sm', paddingBottom: 'xs',
+      contents: [
+        {
+          type: 'box', layout: 'horizontal',
+          contents: [
+            { type: 'text', text: `${letter}.`, flex: 0, size: 'sm', weight: 'bold', color: isPaired ? '#27AE60' : '#E67E22' },
+            { type: 'text', text: o.displayName, flex: 3, size: 'sm', weight: 'bold', color: isPaired ? '#1a1a1a' : '#E67E22', margin: 'sm' },
+            { type: 'text', text: isPaired ? `← #${tIdx[tNo]}` : '⏳', flex: 1, size: 'xs', align: 'end', gravity: 'center', color: isPaired ? '#7D3C98' : '#AAAAAA' },
+          ],
+        },
+        { type: 'text', text: addr || '-', size: 'xs', color: '#888888', margin: 'xs', wrap: true },
+      ],
     });
-  }
+  });
 
   if (unpairedTrackings.length > 0) {
     bodyContents.push({ type: 'separator', margin: 'sm' });
@@ -875,62 +877,29 @@ function adminTrackingReviewFlex(pairs, unpairedTrackings, unpairedOrders, track
     });
   }
 
-  // ออเดอร์ที่ยังไม่มี tracking — แสดงชัดเจน
-  if (unpairedOrders.length > 0) {
+  if (trackingList.length > 0 && allOrd.length > 0) {
+    const maxLetter = String.fromCharCode(64 + allOrd.length);
     bodyContents.push({ type: 'separator', margin: 'md' });
     bodyContents.push({
       type: 'text',
-      text: `⏳ รอ tracking อีก ${unpairedOrders.length} ออเดอร์:`,
-      size: 'xs', weight: 'bold', color: '#E67E22', margin: 'sm',
-    });
-    unpairedOrders.forEach((o, i) => {
-      const letter = String.fromCharCode(65 + pairs.length + i);
-      const addrShort = (o.address || '').slice(0, 40);
-      bodyContents.push({
-        type: 'box', layout: 'vertical', paddingTop: 'sm', paddingBottom: 'xs',
-        contents: [
-          {
-            type: 'box', layout: 'horizontal',
-            contents: [
-              { type: 'text', text: `${letter}.`, flex: 0, size: 'sm', color: '#E67E22', weight: 'bold' },
-              { type: 'text', text: o.displayName, flex: 3, size: 'sm', color: '#E67E22', weight: 'bold', margin: 'sm' },
-              { type: 'text', text: o.orderId.slice(-6), flex: 2, size: 'xs', color: '#AAAAAA', align: 'end', gravity: 'center' },
-            ],
-          },
-          { type: 'text', text: addrShort || '-', size: 'xs', color: '#888888', margin: 'xs', wrap: true },
-        ],
-      });
-    });
-  }
-
-  // คำแนะนำ letter-based assignment
-  if (trackingList.length > 0) {
-    const totalOrders = pairs.length + unpairedOrders.length;
-    const maxLetter = String.fromCharCode(64 + totalOrders);
-    bodyContents.push({ type: 'separator', margin: 'md' });
-    bodyContents.push({
-      type: 'text',
-      text: `📝 จับคู่ผิด? พิมพ์ตัวอักษรตามลำดับ tracking\nเช่น: D B F\n(A–${maxLetter} = ออเดอร์ A ถึง ${maxLetter})`,
+      text: `📝 ผิดคู่? พิมพ์ตัวอักษรตามลำดับ tracking\nเช่น: D B F  (A–${maxLetter})`,
       size: 'xs', color: '#888888', wrap: true, margin: 'sm',
     });
   }
 
-  const totalPacking = pairs.length + unpairedOrders.length;
+  const pairedCount = pairs.length;
+  const totalCount  = allOrd.length;
 
   return {
     type: 'flex',
-    altText: `📋 ทบทวน tracking — จับคู่ได้ ${pairs.length}/${totalPacking} ออเดอร์`,
+    altText: `📋 ทบทวน tracking — จับคู่ได้ ${pairedCount}/${totalCount} ออเดอร์`,
     contents: {
       type: 'bubble',
       header: {
         type: 'box', layout: 'vertical', backgroundColor: '#7D3C98', paddingAll: '16px',
         contents: [
           { type: 'text', text: '📋 ทบทวนก่อนยืนยัน', weight: 'bold', color: '#FFFFFF', size: 'lg' },
-          {
-            type: 'text',
-            text: `จับคู่ได้ ${pairs.length} / ${totalPacking} ออเดอร์`,
-            color: '#D7BDE2', size: 'xs',
-          },
+          { type: 'text', text: `จับคู่ได้ ${pairedCount} / ${totalCount} ออเดอร์`, color: '#D7BDE2', size: 'xs' },
         ],
       },
       body: {
