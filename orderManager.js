@@ -267,30 +267,11 @@ async function handleMessage(event, client) {
       const cur = queue.orders[queue.index];
       const total = queue.orders.length;
 
-      if (['ยกเลิก', 'cancel'].includes(lower)) {
-        delete adminTrackingQueue[userId];
-        await send(client, event.replyToken, { type: 'text', text: '❌ ยกเลิกการกรอก tracking แล้วครับ' });
-        return;
-      }
-
-      if (['ข้าม', 'skip', '-'].includes(lower)) {
-        queue.index++;
-        if (queue.index >= total) {
-          adminPendingMatches[userId] = queue.results;
-          delete adminTrackingQueue[userId];
-          await send(client, event.replyToken, adminTrackingReviewFlex(queue.results, [], []));
-        } else {
-          const next = queue.orders[queue.index];
-          await send(client, event.replyToken, { type: 'text', text: `⏭ ข้าม ${cur.displayName}\n\n📦 ${queue.index + 1}/${total} — ${next.displayName}\nพิมพ์เลข tracking:` });
-        }
-        return;
-      }
-
       const trackingInput = text.trim().replace(/\s+/g, '').toUpperCase();
       if (!/^[A-Z]{2}\d{8,11}[A-Z]{2}$/.test(trackingInput)) {
         await send(client, event.replyToken, {
           type: 'text',
-          text: `⚠️ รูปแบบไม่ถูกต้องครับ\nเช่น: EF123456789TH\n\n📦 ${queue.index + 1}/${total} — ${cur.displayName}\nพิมพ์เลข tracking:`,
+          text: `⚠️ กรุณากรอกเลข tracking ให้ถูกต้องครับ\nเช่น: EF123456789TH\n\n📦 ${queue.index + 1}/${total} — ${cur.displayName}\nพิมพ์เลข tracking:`,
         });
         return;
       }
