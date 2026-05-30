@@ -1,4 +1,3 @@
-const { recognize } = require('tesseract.js');
 const https = require('https');
 
 // ดึงรูปจาก LINE CDN
@@ -11,7 +10,7 @@ function getLineImageBuffer(messageId) {
     }, (res) => {
       const statusCode  = res.statusCode;
       const contentType = res.headers['content-type'] || '';
-      console.log(`[OCR] HTTP ${statusCode} | ${contentType}`);
+      console.log(`[OCR] LINE image HTTP ${statusCode} | ${contentType}`);
       const chunks = [];
       res.on('data', chunk => chunks.push(chunk));
       res.on('end', () => {
@@ -25,17 +24,58 @@ function getLineImageBuffer(messageId) {
   });
 }
 
-// แก้ความสับสน OCR ระหว่าง letter/digit ที่หน้าตาคล้ายกัน
+// แก้ความสับสน OCR ระหว่าง letter/digit
 function fixOcrDigits(str) {
-  // ใน tracking number: ส่วนกลางควรเป็นตัวเลขทั้งหมด
-  // แทน O→0, I/l→1 เฉพาะส่วนที่คาดว่าเป็น digit (ระหว่าง 2 letters กับ TH)
   return str.replace(/([A-Z]{2})([A-Z0-9]{8,11})(TH)/g, (_, pre, mid, suf) =>
-    pre + mid.replace(/O/g, '0').replace(/[Il|]/g, '1').replace(/S/g, '5').replace(/B/g, '8') + suf
+    pre + mid.replace(/O/g, '0').replace(/[Il|]/g, '1') + suf
   );
 }
 
-// OCR — ดึง tracking numbers จากรูป (eng เท่านั้น tracking เป็น ASCII)
-// return: { trackingNumbers, rawText, imageSize, statusCode }
+// OCR ด้วย OCR.space API (แม่นกว่า Tesseract มาก)
+async function callOcrSpace(imageBuffer) {
+  const apiKey = process.env.OCR_SPACE_API_KEY;
+  if (!apiKey) throw new Error('ไม่มี OCR_SPACE_API_KEY');
+
+  const base64 = imageBuffer.toString('base64');
+  const body = [
+    `base64Image=data%3Aimage%2Fjpeg%3Bbase64%2C${encodeURIComponent(base64)}`,
+    'language=eng',
+    'isOverlayRequired=false',
+    'detectOrientation=true',
+    'scale=true',
+    'OCREngine=2',
+  ].join('&');
+
+  return new Promise((resolve, reject) => {
+    const req = https.request({
+      hostname: 'api.ocr.space',
+      path: '/parse/image',
+      method: 'POST',
+      headers: {
+        'apikey': apiKey,
+        'Content-Type': 'application/x-www-form-urlencoded',
+        'Content-Length': Buffer.byteLength(body),
+      },
+    }, (res) => {
+      const chunks = [];
+      res.on('data', chunk => chunks.push(chunk));
+      res.on('end', () => {
+        try {
+          const json = JSON.parse(Buffer.concat(chunks).toString());
+          console.log('[OCR] OCRSpace result:', JSON.stringify(json).slice(0, 500));
+          const text = (json.ParsedResults || []).map(r => r.ParsedText || '').join('\n');
+          resolve(text);
+        } catch (e) { reject(e); }
+      });
+      res.on('error', reject);
+    });
+    req.on('error', reject);
+    req.write(body);
+    req.end();
+  });
+}
+
+// OCR หลัก — return { trackingNumbers, rawText, imageSize, statusCode }
 async function extractTrackingNumbers(messageId) {
   const { buffer, statusCode, contentType } = await getLineImageBuffer(messageId);
 
@@ -44,15 +84,10 @@ async function extractTrackingNumbers(messageId) {
   }
 
   try {
-    console.log('[OCR] starting Tesseract (eng)...');
-    const result = await recognize(buffer, 'eng', {
-      logger: m => { if (m.status === 'recognizing text') process.stdout.write(`\r[OCR] ${(m.progress * 100).toFixed(0)}%`); },
-    });
+    console.log('[OCR] กำลังส่ง OCR.space...');
+    const rawText = await callOcrSpace(buffer);
+    console.log('[OCR] raw text:\n', rawText);
 
-    const rawText = result.data.text || '';
-    console.log('\n[OCR] raw text:\n', rawText);
-
-    // ลบ whitespace ทั้งหมด → แก้ OCR digit errors → หา pattern
     const noSpace = rawText.replace(/\s/g, '').toUpperCase();
     const fixed   = fixOcrDigits(noSpace);
     const found   = fixed.match(/[A-Z]{2}\d{8,11}TH/g) || [];
