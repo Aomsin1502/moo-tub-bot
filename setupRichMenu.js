@@ -31,13 +31,13 @@ const richMenuConfig = {
   chatBarText: '☰  เมนู',
   areas: [
     // แถวบน
-    { bounds: { x: 0,    y: 0,   width: 833,  height: 843 }, action: { type: 'message', label: 'เมนู',       text: 'เมนู'       } },
-    { bounds: { x: 833,  y: 0,   width: 834,  height: 843 }, action: { type: 'uri',     label: 'สั่งสินค้า', uri: 'https://liff.line.me/2010237396-QOmKN3ML' } },
-    { bounds: { x: 1667, y: 0,   width: 833,  height: 843 }, action: { type: 'message', label: 'ดูตะกร้า',  text: 'ตะกร้า'    } },
+    { bounds: { x: 0,    y: 0,   width: 833,  height: 843 }, action: { type: 'uri',     label: 'สั่งสินค้า',   uri: 'https://liff.line.me/2010237396-QOmKN3ML'  } },
+    { bounds: { x: 833,  y: 0,   width: 834,  height: 843 }, action: { type: 'uri',     label: 'เช็คสถานะ',    uri: 'https://liff.line.me/2010237396-Z3MBdmtP'  } },
+    { bounds: { x: 1667, y: 0,   width: 833,  height: 843 }, action: { type: 'message', label: 'ราคาสินค้า',   text: 'เมนู'         } },
     // แถวล่าง
-    { bounds: { x: 0,    y: 843, width: 833,  height: 843 }, action: { type: 'message', label: 'ยกเลิก',    text: 'ยกเลิก'    } },
-    { bounds: { x: 833,  y: 843, width: 834,  height: 843 }, action: { type: 'uri',     label: 'เช็คสถานะ', uri: 'https://liff.line.me/2010237396-Z3MBdmtP' } },
-    { bounds: { x: 1667, y: 843, width: 833,  height: 843 }, action: { type: 'message', label: 'ติดต่อร้าน', text: 'ติดต่อร้าน' } },
+    { bounds: { x: 0,    y: 843, width: 833,  height: 843 }, action: { type: 'message', label: 'ติดต่อร้าน',   text: 'ติดต่อร้าน'   } },
+    { bounds: { x: 833,  y: 843, width: 834,  height: 843 }, action: { type: 'message', label: 'โปรโมชั่น',    text: 'โปรโมชั่น'    } },
+    { bounds: { x: 1667, y: 843, width: 833,  height: 843 }, action: { type: 'message', label: 'สินค้าแนะนำ',  text: 'สินค้าแนะนำ'  } },
   ],
 };
 

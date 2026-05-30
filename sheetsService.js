@@ -123,6 +123,6 @@ async function getOrdersByStatuses(statuses) {
 }
 
 // backward compat
-const getPackingOrders = () => getOrdersByStatus('กำลัง Packing');
+const getPackingOrders = () => getOrdersByStatus('รอแพค');
 
 module.exports = { appendOrder, updateOrderStatus, getPackingOrders, getOrdersByStatus, getOrdersByStatuses };

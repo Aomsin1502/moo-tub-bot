@@ -529,7 +529,7 @@ function catalogFlex() {
 
 const STATUS_CONFIG = {
   'รอยืนยัน':         { color: '#E67E22', icon: '⏳', label: 'รอร้านยืนยัน',      canCancel: false },
-  'กำลัง Packing':    { color: '#2980B9', icon: '📦', label: 'กำลัง Packing',     canCancel: false },
+  'รอแพค':    { color: '#2980B9', icon: '📦', label: 'รอแพค',     canCancel: false },
   'รอส่ง':            { color: '#1A5276', icon: '📫', label: 'รอส่งไปรษณีย์',     canCancel: false },
   'รออนุมัติยกเลิก':  { color: '#7F8C8D', icon: '🔄', label: 'รอร้านอนุมัติ',     canCancel: false },
   'จัดส่งแล้ว':       { color: '#7D3C98', icon: '🚚', label: 'จัดส่งแล้ว',        canCancel: false },
@@ -606,7 +606,7 @@ function cancelConfirmFlex(orderId, hasFee) {
         type: 'box', layout: 'vertical',
         contents: [
           hasFee
-            ? { type: 'text', text: '📦 ออเดอร์กำลัง Packing อยู่แล้วครับ\n\nหากยกเลิก ต้องชำระค่า Packing\nร้านจะติดต่อแจ้งยอดที่ต้องชำระครับ', wrap: true, color: '#C0392B', size: 'sm' }
+            ? { type: 'text', text: '📦 ออเดอร์รอแพค อยู่แล้วครับ\n\nหากยกเลิก ต้องชำระค่า Packing\nร้านจะติดต่อแจ้งยอดที่ต้องชำระครับ', wrap: true, color: '#C0392B', size: 'sm' }
             : { type: 'text', text: 'ยืนยันการยกเลิกออเดอร์ใช่ไหมครับ?\n\nร้านจะดำเนินการคืนเงินให้ครับ 🙏', wrap: true, color: '#555555', size: 'sm' },
         ],
       },
@@ -690,12 +690,12 @@ function pendingOrdersCarouselFlex(orders) {
   const safe = s => String(s || '-').substring(0, 200);
   const STATUS_HDR = {
     'รอยืนยัน':      { color: '#E67E22', icon: '⏳' },
-    'กำลัง Packing': { color: '#2980B9', icon: '📦' },
+    'รอแพค': { color: '#2980B9', icon: '📦' },
     'รอส่ง':         { color: '#1A5276', icon: '📫' },
   };
 
-  // เรียง: รอยืนยัน → กำลัง Packing → รอส่ง
-  const ORDER = ['รอยืนยัน', 'กำลัง Packing', 'รอส่ง'];
+  // เรียง: รอยืนยัน → รอแพค → รอส่ง
+  const ORDER = ['รอยืนยัน', 'รอแพค', 'รอส่ง'];
   const sorted = [...orders].sort((a, b) => ORDER.indexOf(a.status) - ORDER.indexOf(b.status));
   const bubbles = sorted.slice(0, 12).map(o => {
     const hdr = STATUS_HDR[o.status] || { color: '#888', icon: '📋' };
@@ -707,7 +707,7 @@ function pendingOrdersCarouselFlex(orders) {
     if (o.status === 'รอยืนยัน') {
       footerBtns.push({ type: 'button', action: { type: 'message', label: '✅ ยืนยัน', text: `ยืนยัน ${o.orderId}` }, style: 'primary', color: '#27AE60', height: 'sm' });
       footerBtns.push({ type: 'button', action: { type: 'message', label: '❌ ยกเลิก', text: `ยกเลิกออเดอร์แอดมิน ${o.orderId}` }, style: 'secondary', height: 'sm' });
-    } else if (o.status === 'กำลัง Packing') {
+    } else if (o.status === 'รอแพค') {
       footerBtns.push({ type: 'button', action: { type: 'message', label: '📫 พร้อมส่ง', text: `พร้อมส่ง ${o.orderId}` }, style: 'primary', color: '#1A5276', height: 'sm' });
       footerBtns.push({ type: 'button', action: { type: 'message', label: '❌ ยกเลิก', text: `ยกเลิกออเดอร์แอดมิน ${o.orderId}` }, style: 'secondary', height: 'sm' });
     }
@@ -770,7 +770,7 @@ function pendingOrdersOverviewFlex(orders) {
 
   const GROUPS = [
     { status: 'รอยืนยัน',       icon: '⏳', color: '#E67E22' },
-    { status: 'กำลัง Packing',  icon: '📦', color: '#2980B9' },
+    { status: 'รอแพค',  icon: '📦', color: '#2980B9' },
     { status: 'รอส่ง',          icon: '📫', color: '#1A5276' },
   ];
 

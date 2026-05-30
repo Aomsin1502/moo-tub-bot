@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;700;800&display=swap" rel="stylesheet">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  html, body {
+    width: 100%;
+    height: 100%;
+    margin: 0;
+    padding: 0;
+    font-family: 'Sarabun', sans-serif;
+    background: #000;
+  }
+
+  /* wrapper ขนาดจริง 2500x1686 ย่อให้พอดีหน้าจอ */
+  .wrapper {
+    width: 2500px;
+    height: 1686px;
+    transform-origin: top left;
+    transform: scale(var(--scale, 0.5));
+  }
+
+  .grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    grid-template-rows: 1fr 1fr;
+    width: 100%;
+    height: 100%;
+    gap: 6px;
+    background: #111;
+    padding: 6px;
+  }
+
+  .cell {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 20px;
+    border-radius: 16px;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .cell::before {
+    content: '';
+    position: absolute;
+    top: -30%;
+    right: -15%;
+    width: 420px;
+    height: 420px;
+    border-radius: 50%;
+    background: rgba(255,255,255,.08);
+  }
+
+  /* สั่งสินค้า — แดง */
+  .c1 { background: linear-gradient(145deg, #C0392B, #E74C3C); }
+  /* เช็คสถานะ — ม่วง */
+  .c2 { background: linear-gradient(145deg, #6C3483, #9B59B6); }
+  /* ราคาสินค้า — น้ำเงิน */
+  .c3 { background: linear-gradient(145deg, #1A5276, #2980B9); }
+  /* ติดต่อร้าน — เขียว */
+  .c4 { background: linear-gradient(145deg, #1E8449, #27AE60); }
+  /* โปรโมชั่น — ส้ม */
+  .c5 { background: linear-gradient(145deg, #D35400, #E67E22); }
+  /* สินค้าแนะนำ — ชมพู-แดง */
+  .c6 { background: linear-gradient(145deg, #922B21, #CB4335); }
+
+  .icon {
+    font-size: 130px;
+    line-height: 1;
+    filter: drop-shadow(0 6px 12px rgba(0,0,0,.3));
+  }
+
+  .label {
+    font-size: 82px;
+    font-weight: 800;
+    color: #ffffff;
+    letter-spacing: 2px;
+    text-shadow: 0 4px 12px rgba(0,0,0,.3);
+  }
+
+  .sublabel {
+    font-size: 44px;
+    font-weight: 400;
+    color: rgba(255,255,255,.75);
+    margin-top: -14px;
+  }
+</style>
+</head>
+<body>
+<div class="wrapper">
+<div class="grid">
+
+  <div class="cell c1">
+    <div class="icon">🛒</div>
+    <div class="label">สั่งสินค้า</div>
+    <div class="sublabel">เลือกสินค้าได้เลย</div>
+  </div>
+
+  <div class="cell c2">
+    <div class="icon">📦</div>
+    <div class="label">เช็คสถานะ</div>
+    <div class="sublabel">ติดตามพัสดุ</div>
+  </div>
+
+  <div class="cell c3">
+    <div class="icon">📋</div>
+    <div class="label">ราคาสินค้า</div>
+    <div class="sublabel">ดูรายการและราคา</div>
+  </div>
+
+  <div class="cell c4">
+    <div class="icon">📞</div>
+    <div class="label">ติดต่อร้าน</div>
+    <div class="sublabel">สอบถามข้อมูล</div>
+  </div>
+
+  <div class="cell c5">
+    <div class="icon">🎁</div>
+    <div class="label">โปรโมชั่น</div>
+    <div class="sublabel">ส่วนลดพิเศษ</div>
+  </div>
+
+  <div class="cell c6">
+    <div class="icon">⭐</div>
+    <div class="label">สินค้าแนะนำ</div>
+    <div class="sublabel">ขายดีประจำร้าน</div>
+  </div>
+
+</div>
+</div>
+
+<script>
+  // ย่อให้พอดีหน้าจอ
+  const scale = Math.min(
+    window.innerWidth / 2500,
+    window.innerHeight / 1686
+  ) * 0.95;
+  document.querySelector('.wrapper').style.transform = `scale(${scale})`;
+</script>
+</body>
+</html>

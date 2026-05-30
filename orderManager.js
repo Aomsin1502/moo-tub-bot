@@ -15,7 +15,7 @@ const ADMIN_USER_ID = process.env.ADMIN_USER_ID || '';
 const userStates = {};
 
 // orderId → { userId, displayName, status, total, items, address, trackingNo }
-// status: รอยืนยัน | กำลัง Packing | รอส่ง | รออนุมัติยกเลิก | จัดส่งแล้ว | ยกเลิก
+// status: รอยืนยัน | รอแพค | รอส่ง | รออนุมัติยกเลิก | จัดส่งแล้ว | ยกเลิก
 const orderStatus = {};
 
 // userId → orderId (most recent placed order)
@@ -287,43 +287,62 @@ async function handleMessage(event, client) {
   if (ADMIN_USER_ID && userId === ADMIN_USER_ID) {
 
     // ล้างประวัติทั้งหมด (สำหรับทดสอบ)
-    // ออเดอร์รอดำเนินการทั้งหมด (รอยืนยัน + กำลัง Packing + รอส่ง)
-    if (['ออเดอร์', 'orders', 'listorder', 'รายการออเดอร์', 'ดูออเดอร์'].includes(lower)) {
-      await send(client, event.replyToken, { type: 'text', text: '⏳ กำลังดึงข้อมูล...' });
-      getOrdersByStatuses(['รอยืนยัน', 'กำลัง Packing', 'รอส่ง']).then(async orders => {
-        if (orders.length === 0) {
-          return client.pushMessage({ to: userId, messages: [{ type: 'text', text: '✅ ไม่มีออเดอร์รอดำเนินการครับ' }] });
-        }
-        const ICONS = { 'รอยืนยัน': '⏳', 'กำลัง Packing': '📦', 'รอส่ง': '📫' };
-        const ORDER_STATUS = ['รอยืนยัน', 'กำลัง Packing', 'รอส่ง'];
-        const sorted = [...orders].sort((a, b) => ORDER_STATUS.indexOf(a.status) - ORDER_STATUS.indexOf(b.status));
-
-        // ส่งทีละ order เพื่อหลีกเลี่ยง Flex ขนาดใหญ่
-        for (const o of sorted.slice(0, 10)) {
-          const icon = ICONS[o.status] || '📋';
-          let text = `${icon} ${o.status}\n#${o.orderId}\n👤 ${o.displayName}  💰 ${o.total}฿\n📍 ${(o.address||'').slice(0,50)}`;
-
-          let qr = null;
-          if (o.status === 'รอยืนยัน') {
-            qr = { items: [
+    // ออเดอร์รอดำเนินการทั้งหมด (รอยืนยัน + รอแพค + รอส่ง)
+    // ─── รอยืนยัน — รายการที่ยังไม่ได้ยืนยัน ────────────────────
+    if (lower === 'รอยืนยัน') {
+      await send(client, event.replyToken, { type: 'text', text: '⏳ กำลังดึงรายการรอยืนยัน...' });
+      getOrdersByStatus('รอยืนยัน').then(async orders => {
+        if (!orders.length) return client.pushMessage({ to: userId, messages: [{ type: 'text', text: '✅ ไม่มีออเดอร์รอยืนยันครับ' }] });
+        for (const o of orders.slice(0, 10)) {
+          await client.pushMessage({ to: userId, messages: [{
+            type: 'text',
+            text: `⏳ รอยืนยัน\n#${o.orderId}\n👤 ${o.displayName}  💰 ${o.total}฿\n📍 ${(o.address||'').slice(0,60)}`,
+            quickReply: { items: [
               { type: 'action', action: { type: 'message', label: '✅ ยืนยัน', text: `ยืนยัน ${o.orderId}` } },
               { type: 'action', action: { type: 'message', label: '❌ ยกเลิก', text: `ยกเลิกออเดอร์แอดมิน ${o.orderId}` } },
-            ]};
-          } else if (o.status === 'กำลัง Packing') {
-            qr = { items: [
-              { type: 'action', action: { type: 'message', label: '📫 พร้อมส่ง', text: `พร้อมส่ง ${o.orderId}` } },
-              { type: 'action', action: { type: 'message', label: '❌ ยกเลิก', text: `ยกเลิกออเดอร์แอดมิน ${o.orderId}` } },
-            ]};
-          }
-
-          const msg = { type: 'text', text };
-          if (qr) msg.quickReply = qr;
-          await client.pushMessage({ to: userId, messages: [msg] });
+            ]},
+          }] });
         }
-      }).catch(err => {
-        console.error('[orders]', err.message);
-        client.pushMessage({ to: userId, messages: [{ type: 'text', text: `❌ error: ${err.message}` }] });
-      });
+      }).catch(err => client.pushMessage({ to: userId, messages: [{ type: 'text', text: `❌ ${err.message}` }] }));
+      return;
+    }
+
+    // ─── รอแพค — รายการที่รอแพคสินค้า ───────────────────────────
+    if (['รอแพค', 'packing'].includes(lower)) {
+      await send(client, event.replyToken, { type: 'text', text: '⏳ กำลังดึงข้อมูลจาก Sheets...' });
+      getOrdersByStatus('รอแพค').then(async orders => {
+        if (!orders.length) return client.pushMessage({ to: userId, messages: [{ type: 'text', text: '✅ ไม่มีออเดอร์รอแพคครับ' }] });
+        for (const o of orders.slice(0, 10)) {
+          await client.pushMessage({ to: userId, messages: [{
+            type: 'text',
+            text: `📦 รอแพค\n#${o.orderId}\n👤 ${o.displayName}  💰 ${o.total}฿\n🛍 ${(o.itemsStr||'').slice(0,60)}\n📍 ${(o.address||'').slice(0,60)}`,
+            quickReply: { items: [
+              { type: 'action', action: { type: 'message', label: '✅ พร้อมส่ง', text: `พร้อมส่ง ${o.orderId}` } },
+              { type: 'action', action: { type: 'message', label: '❌ ยกเลิก', text: `ยกเลิกออเดอร์แอดมิน ${o.orderId}` } },
+            ]},
+          }] });
+        }
+      }).catch(err => client.pushMessage({ to: userId, messages: [{ type: 'text', text: `❌ ${err.message}` }] }));
+      return;
+    }
+
+    // ─── สรุป — ภาพรวมทุกสถานะที่ยังค้างอยู่ ─────────────────────
+    if (['สรุป', 'ออเดอร์', 'summary'].includes(lower)) {
+      await send(client, event.replyToken, { type: 'text', text: '⏳ กำลังดึงข้อมูล...' });
+      getOrdersByStatuses(['รอยืนยัน', 'รอแพค', 'รอส่ง']).then(orders => {
+        if (!orders.length) return client.pushMessage({ to: userId, messages: [{ type: 'text', text: '✅ ไม่มีออเดอร์รอดำเนินการครับ' }] });
+        const ICONS = { 'รอยืนยัน': '⏳', 'รอแพค': '📦', 'รอส่ง': '📫' };
+        const byStatus = {};
+        orders.forEach(o => { if (!byStatus[o.status]) byStatus[o.status] = []; byStatus[o.status].push(o); });
+        let text = `📋 สรุปออเดอร์รอดำเนินการ (${orders.length} รายการ)`;
+        ['รอยืนยัน', 'รอแพค', 'รอส่ง'].forEach(s => {
+          const list = byStatus[s] || [];
+          if (!list.length) return;
+          text += `\n\n${ICONS[s]} ${s} (${list.length})`;
+          list.forEach(o => { text += `\n  • ${o.displayName}  ${o.total}฿`; });
+        });
+        return client.pushMessage({ to: userId, messages: [{ type: 'text', text }] });
+      }).catch(err => client.pushMessage({ to: userId, messages: [{ type: 'text', text: `❌ ${err.message}` }] }));
       return;
     }
 
@@ -371,37 +390,7 @@ async function handleMessage(event, client) {
       return;
     }
 
-    // ดูรายการ Packing — อ่านจาก Sheets
-    if (['packing', 'แพ็ค', 'แพ็คของ', 'จัดของ', 'ดูpacking'].includes(lower)) {
-      // ตอบทันทีก่อน (replyToken timeout 1 นาที)
-      await send(client, event.replyToken, { type: 'text', text: '⏳ กำลังดึงข้อมูล Packing...' });
-      // แล้วค่อย push ผลลัพธ์ (ไม่ขึ้นกับ replyToken)
-      getPackingOrders().then(sheetOrders => {
-        if (sheetOrders.length === 0) {
-          return client.pushMessage({ to: userId, messages: [{ type: 'text', text: '✅ ไม่มีออเดอร์รอ Packing ครับ' }] });
-        }
-        const { FLAT_ITEMS } = require('./menu');
-        const orders = sheetOrders.map(o => {
-          const items = (o.itemsStr || '').split(',').map(s => {
-            const m = s.trim().match(/^(.+?)x(\d+)$/i);
-            if (!m) return { name: s.trim(), price: 0, qty: 1, subtotal: 0, weight: 0 };
-            const name = m[1].trim();
-            const qty  = parseInt(m[2]) || 1;
-            const found = FLAT_ITEMS.find(fi => fi.name === name);
-            const price = found ? found.price : 0;
-            return { name, price, qty, subtotal: price * qty, weight: found ? (found.weight || 0) : 0 };
-          });
-          return { orderId: o.orderId, displayName: o.displayName, items, total: o.total, address: o.address };
-        });
-        // ส่ง itemsStr ไปด้วยเผื่อ items parse ไม่ได้
-        const enriched = orders.map((o, idx) => ({ ...o, itemsStr: sheetOrders[idx]?.itemsStr || '' }));
-        return client.pushMessage({ to: userId, messages: [packingListFlex(enriched)] });
-      }).catch(err => {
-        console.error('[packing] error:', err.message);
-        client.pushMessage({ to: userId, messages: [{ type: 'text', text: `❌ packing error: ${err.message}` }] });
-      });
-      return;
-    }
+    // (รอแพค command อยู่ด้านบนแล้ว)
 
     // รายการรอจัดส่ง → เริ่ม sequential tracking entry (อ่านจาก Sheets)
     if (['รายการส่ง', 'รายการจัดส่ง', 'ค้างส่ง'].includes(lower)) {
@@ -555,14 +544,14 @@ async function handleMessage(event, client) {
       const orderId = confirmMatch[1].toUpperCase();
       const order = orderStatus[orderId];
       if (order && order.status === 'รอยืนยัน') {
-        order.status = 'กำลัง Packing';
-        updateOrderStatus(orderId, 'กำลัง Packing').catch(e => console.error('Sheets confirm error:', e.message));
+        order.status = 'รอแพค';
+        updateOrderStatus(orderId, 'รอแพค').catch(e => console.error('Sheets confirm error:', e.message));
         try {
           await client.pushMessage({ to: order.userId, messages: [orderConfirmedFlex(orderId)] });
         } catch (err) { console.error('Push customer error:', err.message); }
         await send(client, event.replyToken, {
           type: 'text',
-          text: `✅ ยืนยัน #${orderId}\nสถานะ → กำลัง Packing\nแจ้งลูกค้า "${order.displayName}" แล้วครับ`,
+          text: `✅ ยืนยัน #${orderId}\nสถานะ → รอแพค\nแจ้งลูกค้า "${order.displayName}" แล้วครับ`,
         });
       } else if (order) {
         await send(client, event.replyToken, { type: 'text', text: `⚠️ #${orderId} สถานะปัจจุบัน: ${order.status}` });
@@ -741,7 +730,7 @@ async function handleMessage(event, client) {
     } else {
       // ยกเลิกระหว่าง Packing / รอส่ง — ต้องรอ admin อนุมัติ
       if (order) order.status = 'รออนุมัติยกเลิก';
-      const statusLabel = order?.status === 'รอส่ง' ? 'รอส่งไปรษณีย์' : 'กำลัง Packing';
+      const statusLabel = order?.status === 'รอส่ง' ? 'รอส่งไปรษณีย์' : 'รอแพค';
       if (ADMIN_USER_ID) {
         try {
           await client.pushMessage({
