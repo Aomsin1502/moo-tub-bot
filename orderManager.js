@@ -122,7 +122,8 @@ async function handleMessage(event, client) {
   if (event.message.type === 'image') {
 
     // Admin ส่งรูปสลิปไปรษณีไทย → OCR tracking numbers
-    if (ADMIN_USER_ID && userId === ADMIN_USER_ID) {
+    // (ข้ามถ้า admin กำลังสั่งของเอง = waiting_slip)
+    if (ADMIN_USER_ID && userId === ADMIN_USER_ID && state.state !== 'waiting_slip') {
       await send(client, event.replyToken, {
         type: 'text', text: '🔍 กำลังอ่าน tracking...',
       });
