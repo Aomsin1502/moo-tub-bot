@@ -291,9 +291,11 @@ async function handleMessage(event, client) {
     // ─── รอยืนยัน — รายการที่ยังไม่ได้ยืนยัน ────────────────────
     if (lower === 'รอยืนยัน') {
       await send(client, event.replyToken, { type: 'text', text: '⏳ กำลังดึงรายการรอยืนยัน...' });
-      getOrdersByStatus('รอยืนยัน').then(orders => {
-        const enriched = orders.map(o => ({ ...o, itemsStr: o.itemsStr || '' }));
-        return client.pushMessage({ to: userId, messages: [orderStatusFlex(enriched, 'รอยืนยัน')] });
+      getOrdersByStatus('รอยืนยัน').then(async orders => {
+        if (!orders.length) return client.pushMessage({ to: userId, messages: [{ type: 'text', text: '✅ ไม่มีออเดอร์รอยืนยันครับ' }] });
+        for (const o of orders.slice(0, 10)) {
+          await client.pushMessage({ to: userId, messages: [orderStatusFlex([{ ...o, itemsStr: o.itemsStr || '' }], 'รอยืนยัน')] });
+        }
       }).catch(err => client.pushMessage({ to: userId, messages: [{ type: 'text', text: `❌ ${err.message}` }] }));
       return;
     }
@@ -301,9 +303,11 @@ async function handleMessage(event, client) {
     // ─── รอแพค — รายการที่รอแพคสินค้า ───────────────────────────
     if (['รอแพค', 'packing'].includes(lower)) {
       await send(client, event.replyToken, { type: 'text', text: '⏳ กำลังดึงข้อมูลจาก Sheets...' });
-      getOrdersByStatuses(['รอแพค', 'กำลัง Packing']).then(orders => {
-        const enriched = orders.map(o => ({ ...o, itemsStr: o.itemsStr || '' }));
-        return client.pushMessage({ to: userId, messages: [orderStatusFlex(enriched, 'รอแพค')] });
+      getOrdersByStatuses(['รอแพค', 'กำลัง Packing']).then(async orders => {
+        if (!orders.length) return client.pushMessage({ to: userId, messages: [{ type: 'text', text: '✅ ไม่มีออเดอร์รอแพคครับ' }] });
+        for (const o of orders.slice(0, 10)) {
+          await client.pushMessage({ to: userId, messages: [orderStatusFlex([{ ...o, itemsStr: o.itemsStr || '' }], 'รอแพค')] });
+        }
       }).catch(err => client.pushMessage({ to: userId, messages: [{ type: 'text', text: `❌ ${err.message}` }] }));
       return;
     }
